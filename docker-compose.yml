@@ -1,0 +1,77 @@
+# AlertaBarrio en local: docker compose up --build
+# Ver la base de datos: docker compose --profile tools up mongo-express -> http://localhost:8081
+
+services:
+  # === MongoDB (base de datos) ===
+  mongodb:
+    image: mongo:7.0
+    container_name: alertabarrio-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # === mongo-express (pagina para ver colecciones y documentos) ===
+  mongo-express:
+    image: mongo-express:1.0
+    container_name: alertabarrio-mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    profiles:
+      - tools
+
+  # === Componente de IA ===
+  ai:
+    build: ./ai
+    container_name: alertabarrio-ai
+    ports:
+      - "8001:8001"
+    env_file:
+      - path: ./ai/.env
+        required: false
+
+  # === Backend (API REST) ===
+  backend:
+    build: ./backend
+    container_name: alertabarrio-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/alertabarrio
+      AI_SERVICE_URL: http://ai:8001
+      AI_WAKE_SECONDS: "0"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      ai:
+        condition: service_started
+
+  # === Frontend (nginx sirviendo el build de React) ===
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+        VITE_AI_URL: http://localhost:8001
+    container_name: alertabarrio-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:

@@ -1,0 +1,34 @@
+# Blueprint de Render: backend e IA. La base de datos NO va aqui: esta en MongoDB Atlas.
+# MONGODB_URI se pone a mano en el panel de Render (sync: false). Nunca subirla al repositorio.
+services:
+  - type: web
+    name: alertabarrio-backend
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: AI_SERVICE_URL
+        value: https://alertabarrio-ai.onrender.com
+      - key: CORS_ORIGINS
+        value: https://alertabarrio-frontend.vercel.app,http://localhost:5173
+      - key: SEED_ON_STARTUP
+        value: "true"
+      - key: TIMEZONE
+        value: America/Bogota
+      - key: PROFESOR_PASSWORD
+        sync: false
+
+  - type: web
+    name: alertabarrio-ai
+    runtime: docker
+    rootDir: ai
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
