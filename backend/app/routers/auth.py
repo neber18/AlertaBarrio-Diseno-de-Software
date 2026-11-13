@@ -1,0 +1,156 @@
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pymongo.database import Database
+from pymongo.errors import DuplicateKeyError
+
+from .. import models, schemas
+from ..database import get_db
+from ..security import (
+    burn_password_check,
+    create_access_token,
+    get_current_user,
+    hash_password,
+    limit_auth_requests,
+    login_throttle,
+    needs_rehash,
+    new_totp_secret,
+    totp_uri,
+    verify_password,
+    verify_totp,
+)
+from ..serializers import user_out
+from ..services.engine import engine
+
+router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+
+# Mensaje que el frontend usa para mostrar el paso del codigo de verificacion
+TWO_FACTOR_REQUIRED = "Ingresa el codigo de tu app de autenticacion"
+
+
+@router.post("/register", response_model=schemas.TokenOut, status_code=201, dependencies=[Depends(limit_auth_requests)])
+def register(data: schemas.RegisterIn, db: Database = Depends(get_db)):
+    email = data.email.lower()
+    if models.User.by_email(db, email):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una cuenta con ese correo")
+    if data.neighborhood_id is not None and models.Neighborhood.get(db, data.neighborhood_id) is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "El barrio no existe")
+    user = models.User(
+        full_name=data.full_name.strip(),
+        email=email,
+        password_hash=hash_password(data.password),
+        phone=data.phone,
+        role="citizen",
+        neighborhood_id=data.neighborhood_id,
+    )
+    try:
+        user.insert(db)
+    except DuplicateKeyError:  # indice unico de email: dos registros al mismo tiempo
+        raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe una cuenta con ese correo")
+    # Si eligio barrio, lo suscribimos automaticamente a las alertas de su barrio
+    if data.neighborhood_id is not None:
+        models.Subscription(user_id=user.id, neighborhood_id=data.neighborhood_id).insert(db)
+        engine.subscribe(data.neighborhood_id, user.id)
+    return schemas.TokenOut(access_token=create_access_token(user), user=user_out(user))
+
+
+STAFF_ROLES = ("moderator", "admin")
+
+
+@router.post("/login", response_model=schemas.TokenOut, dependencies=[Depends(limit_auth_requests)])
+def login(data: schemas.LoginIn, db: Database = Depends(get_db)):
+    email = data.email.lower()
+    locked = login_throttle.seconds_locked(email)
+    if locked:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"Demasiados intentos fallidos. Intenta de nuevo en {max(1, locked // 60)} min",
+            headers={"Retry-After": str(locked)},
+        )
+    user = models.User.by_email(db, email)
+    if user is None:
+        burn_password_check(data.password)
+    if user is None or not verify_password(data.password, user.password_hash):
+        login_throttle.fail(email)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Correo o contrasena incorrectos")
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "La cuenta esta desactivada")
+    is_staff = user.role in STAFF_ROLES
+    if data.account_type == "admin" and not is_staff:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Esta cuenta no tiene permisos de administrador")
+    if data.account_type == "user" and is_staff:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Esta es una cuenta de administrador, ingresa como Administrador")
+    if user.totp_enabled:
+        if not data.otp:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, TWO_FACTOR_REQUIRED, headers={"X-2FA-Required": "true"})
+        if not verify_totp(user.totp_secret, data.otp):
+            login_throttle.fail(email)
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "El codigo de verificacion no es correcto", headers={"X-2FA-Required": "true"})
+    login_throttle.reset(email)
+    if needs_rehash(user.password_hash):
+        user.password_hash = hash_password(data.password)
+    user.last_login_at = datetime.now(timezone.utc)
+    user.save(db)
+    return schemas.TokenOut(access_token=create_access_token(user), user=user_out(user))
+
+
+@router.post("/change-password", status_code=204)
+def change_password(
+    data: schemas.ChangePasswordIn,
+    db: Database = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    if not verify_password(data.current_password, user.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La contrasena actual no es correcta")
+    if verify_password(data.new_password, user.password_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La nueva contrasena debe ser distinta a la actual")
+    user.password_hash = hash_password(data.new_password)
+    user.save(db)
+
+
+@router.get("/me", response_model=schemas.UserOut)
+def me(user: models.User = Depends(get_current_user)):
+    return user_out(user)
+
+
+# ------------------------------------------------------------------ sesiones
+@router.post("/logout-all", response_model=schemas.TokenOut)
+def logout_all(db: Database = Depends(get_db), user: models.User = Depends(get_current_user)):
+    """Cierra la sesion en todos los dispositivos; este recibe un token nuevo."""
+    user.token_version += 1
+    user.save(db)
+    return schemas.TokenOut(access_token=create_access_token(user), user=user_out(user))
+
+
+# ------------------------------------------------------------------ verificacion en dos pasos
+@router.post("/2fa/setup", response_model=schemas.TwoFactorSetupOut)
+def two_factor_setup(db: Database = Depends(get_db), user: models.User = Depends(get_current_user)):
+    if user.totp_enabled:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La verificacion en dos pasos ya esta activa")
+    user.totp_secret = new_totp_secret()
+    user.save(db)
+    return schemas.TwoFactorSetupOut(secret=user.totp_secret, otpauth_uri=totp_uri(user.totp_secret, user.email))
+
+
+@router.post("/2fa/enable", response_model=schemas.UserOut)
+def two_factor_enable(data: schemas.TwoFactorCodeIn, db: Database = Depends(get_db), user: models.User = Depends(get_current_user)):
+    if not user.totp_secret:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Primero genera el codigo QR")
+    if not verify_totp(user.totp_secret, data.code):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "El codigo no es correcto, revisa la hora de tu celular")
+    user.totp_enabled = True
+    user.save(db)
+    return user_out(user)
+
+
+@router.post("/2fa/disable", response_model=schemas.UserOut)
+def two_factor_disable(data: schemas.TwoFactorDisableIn, db: Database = Depends(get_db), user: models.User = Depends(get_current_user)):
+    if not user.totp_enabled:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La verificacion en dos pasos no esta activa")
+    if not verify_password(data.password, user.password_hash) or not verify_totp(user.totp_secret, data.code):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La contrasena o el codigo no son correctos")
+    user.totp_enabled = False
+    user.totp_secret = None
+    user.save(db)
+    return user_out(user)

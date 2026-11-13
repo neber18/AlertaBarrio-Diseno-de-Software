@@ -1,0 +1,21 @@
+{
+  "_id": 1,
+  "name": "Centro",
+  "city": "Pasto",
+  "comuna": 1,
+  "latitude": 1.2136,
+  "longitude": -77.2811,
+  "created_at": "2026-11-13T06:09:48.645000+00:00",
+  "connections": [
+    {
+      "to_neighborhood_id": 10,
+      "distance_meters": 1022.0,
+      "road_name": "Avenida Boyaca"
+    },
+    {
+      "to_neighborhood_id": 13,
+      "distance_meters": 2083.0,
+      "road_name": "Calle 19"
+    }
+  ]
+}

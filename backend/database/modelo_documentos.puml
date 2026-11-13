@@ -1,0 +1,113 @@
+@startuml Modelo_Documentos_AlertaBarrio
+title Modelo de documentos en MongoDB - AlertaBarrio
+skinparam classAttributeIconSize 0
+hide circle
+
+class "users" as U <<document>> {
+  _id : int
+  full_name : String
+  email : String {unique}
+  password_hash : String
+  role : citizen | moderator | admin
+  neighborhood_id : int
+  token_version : int
+  totp_enabled : bool
+}
+class "neighborhoods" as N <<document>> {
+  _id : int
+  name : String {unique}
+  city, comuna : String, int
+  latitude, longitude : double
+  connections : Connection[]
+}
+class "Connection" as C <<embedded>> {
+  to_neighborhood_id : int
+  distance_meters : double
+  road_name : String
+}
+class "incident_types" as T <<document>> {
+  _id : int
+  code : String {unique}
+  name : String
+  severity_level : 1..5
+  color : String
+}
+class "reports" as R <<document>> {
+  _id : int
+  user_id : int
+  reporter_name : String
+  neighborhood_id : int
+  incident_type_id : int
+  title, description : String
+  latitude, longitude : double
+  status : String
+  priority_score : double
+  ai_suggested_type_id, ai_confidence, ai_zone_risk
+  photos : Photo[]
+  history : StatusChange[]
+  verifications : Verification[]
+}
+class "Photo" as P <<embedded>> {
+  url : String
+  created_at : Date
+}
+class "StatusChange" as H <<embedded>> {
+  id : int
+  previous_status, new_status : String
+  changed_by : int
+  note : String
+  changed_at : Date
+}
+class "Verification" as V <<embedded>> {
+  user_id : int
+  is_confirmed : bool
+  comment : String
+}
+class "subscriptions" as S <<document>> {
+  _id : int
+  user_id : int
+  neighborhood_id : int
+}
+class "notifications" as NO <<document>> {
+  _id : int
+  user_id : int
+  report_id : int
+  message : String
+  is_read : bool
+}
+class "ai_analyses" as A <<document>> {
+  analysis_type, model_name : String
+  latency_ms : int
+  result : Object
+}
+class "daily_summaries" as D <<document>> {
+  neighborhood_id : int
+  summary_date : "AAAA-MM-DD"
+  summary_text : String
+}
+class "risk_hotspots" as Z <<document>> {
+  neighborhood_id : int
+  day_of_week, hour_block : int
+  risk_score : double
+}
+class "counters" as K <<document>> {
+  _id : nombre de la coleccion
+  seq : int
+}
+
+N *-- "*" C : embebido
+R *-- "*" P : embebido
+R *-- "1..*" H : embebido (pila)
+R *-- "*" V : embebido
+R ..> U : user_id
+R ..> N : neighborhood_id
+R ..> T : incident_type_id
+U ..> N : neighborhood_id
+S ..> U
+S ..> N
+NO ..> U
+NO ..> R
+D ..> N
+Z ..> N
+A ..> R
+@enduml
