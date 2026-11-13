@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.142-009688.svg)](https://fastapi.tiangolo.com/)
 [![MongoDB 7](https://img.shields.io/badge/MongoDB-7.0-green.svg)](https://www.mongodb.com/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
-[![CI](https://github.com/TU_USUARIO/TU_REPOSITORIO/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![CI](https://github.com/neber18/AlertaBarrio-Diseno-de-Software/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
 
 Plataforma para que los vecinos de **San Juan de Pasto** **reporten incidentes de seguridad** (robos, hurtos, actividad sospechosa…) y reciban **alertas de su barrio**. Los reportes pasan por moderación, se ordenan por gravedad y una **inteligencia artificial** ayuda a clasificarlos, predecir zonas de riesgo y calcular rutas seguras.
 
