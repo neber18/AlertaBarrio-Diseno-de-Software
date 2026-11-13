@@ -1,0 +1,95 @@
+@startuml Vista_Desarrollo_AlertaBarrio
+title Vista de Desarrollo - AlertaBarrio
+skinparam packageStyle rectangle
+
+package "frontend/ (React + Vite)" {
+  class App {
+  +rutas()
+}
+  class Pages {
+  Home, MapPage, Alerts
+  NewReport, VigiaPage, RoutePage
+  Moderation, Notifications, Auth
+}
+  class Components {
+  BaseMap, ReportCard
+  VoiceReport, Assistant, AddressSearch
+}
+  class AuthContext {
+  +login()
+  +logout()
+}
+  class ApiClient {
+  +get()
+  +post()
+}
+}
+
+package "backend/ (FastAPI)" {
+  class Main {
+  +app
+}
+  class Routers {
+  auth, reports, moderation
+  notifications, routes, ai, catalog
+}
+  class Security {
+  +get_current_user()
+  +require_moderator()
+  +hash_password()
+}
+  class Services {
+  engine (AlertEngine)
+  report_service, geo
+}
+  class AiClient {
+  +analyze_report()
+  +wake_up()
+}
+  class Structures {
+  DynamicArray, LinkedList, Stack
+  Queue, PriorityQueue, HashTable
+  AVL, Graph, sorting
+}
+  class Database {
+  +get_db()
+  +next_id() <<counters>>
+  +ensure_indexes()
+}
+  class Models {
+  documentos «document» / «embedded»
+  (dataclasses + PyMongo)
+}
+}
+
+package "Persistencia (MongoDB 7 / Atlas)" {
+  class DB <<MongoDB>> {
+  users, neighborhoods, incident_types
+  reports, subscriptions, notifications
+  ai_analyses, daily_summaries
+  risk_hotspots, counters
+}
+}
+package "ai/ (FastAPI)" {
+  class ComponenteIA {
+  Naive Bayes, KDE
+  resumen diario, chat
+}
+}
+
+App ..> Pages
+Pages ..> Components
+Pages ..> AuthContext
+Pages ..> ApiClient
+AuthContext ..> ApiClient
+ApiClient ..> Main : HTTP/JSON
+Main ..> Routers
+Routers ..> Security
+Routers ..> Services
+Services ..> Structures
+Services ..> Models
+Services ..> AiClient
+Models ..> Database
+Database ..> DB : PyMongo / TCP 27017
+AiClient ..> ComponenteIA : HTTP/JSON
+@enduml

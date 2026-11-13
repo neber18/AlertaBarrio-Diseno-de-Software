@@ -1,0 +1,20 @@
+@startuml Vista_Contexto_AlertaBarrio
+title Vista de Contexto - AlertaBarrio
+skinparam rectangleBackgroundColor #FFF6D5
+left to right direction
+
+rectangle "Vecinos" as V
+rectangle "Moderadores /\nAdministradores" as M
+rectangle "Componente de IA\n(alertabarrio-ai)" as IA
+rectangle "OpenStreetMap\n(mapas y direcciones)" as OSM
+circle "AlertaBarrio" as S
+
+V --> S : Reportes, confirmaciones,\nbarrios a seguir, preguntas
+S --> V : Alertas del barrio, notificaciones,\nmapa de calor, ruta segura
+M --> S : Publicar, rechazar, deshacer
+S --> M : Cola de reportes por prioridad,\nestadísticas
+S --> IA : Texto del reporte,\nhistorial del barrio, preguntas
+IA --> S : Tipo sugerido, riesgo de zona,\nmapa de calor, resumen
+S --> OSM : Coordenadas, búsqueda\nde dirección
+OSM --> S : Mosaicos del mapa,\ndirecciones
+@enduml

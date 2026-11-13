@@ -1,0 +1,34 @@
+@startuml Vista_Funcional_AlertaBarrio
+title Vista Funcional - AlertaBarrio
+skinparam componentStyle uml2
+left to right direction
+
+component "<<component>>\nAutenticación y Seguridad\n(2)" as Auth
+component "<<component>>\nComponente de IA (Vigía)\n(3)" as IA
+component "<<component>>\nNotificaciones\n(4)" as Notif
+component "<<component>>\nRutas Seguras\n(5)" as Rutas
+component "<<component>>\nGestión de Reportes\n(1)" as Rep
+
+() "validar acceso" as I1
+() "analizar reporte" as I2
+() "enviar notificación" as I3
+() "calcular ruta" as I4
+() "moderar reportes\n(management port)" as I5
+() "recibir reporte" as I6
+
+Auth -- I1
+IA -- I2
+Notif -- I3
+Rutas -- I4
+I1 )-- Rep : service port
+I2 )-- Rep : service port
+I3 )-- Rep : service port
+Rep -- I5
+Rep -- I6
+
+actor Moderador
+actor Vecino
+Moderador ..> I5 : <<use>>
+Vecino ..> I6 : <<use>>
+Vecino ..> I4 : <<use>>
+@enduml
