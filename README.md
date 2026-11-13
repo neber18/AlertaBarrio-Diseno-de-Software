@@ -281,4 +281,3 @@ Pasos para Atlas y Render en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md). Los pla
 ## 👥 Equipo
 
 - Neber Camilo Melo Pantoja
-- Santiago (completar apellido)

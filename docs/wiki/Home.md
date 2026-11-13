@@ -4,7 +4,7 @@
 
 **Diseño de Software — Universidad Cooperativa de Colombia, Campus Pasto**
 
-**Autores:** Neber Camilo Melo Pantoja · Santiago (completar apellido)
+**Autor:** Neber Camilo Melo Pantoja
 **Versión del documento:** 2.1 (base de datos MongoDB)
 **Última actualización:** 13/11/2026
 
