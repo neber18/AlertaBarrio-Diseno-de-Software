@@ -1,0 +1,142 @@
+import { useEffect, useState } from "react";
+import { CircleMarker, Polyline, Tooltip } from "react-leaflet";
+import { useSearchParams } from "react-router-dom";
+import HoodOptions from "../components/HoodOptions";
+import { api } from "../api/client";
+import type { SafeRoute } from "../api/types";
+import BaseMap from "../components/BaseMap";
+import Icon from "../components/Icon";
+import VoiceInput from "../components/VoiceInput";
+import { Card, ErrorBox, Loading } from "../components/ui";
+import { ASSISTANT_NAME } from "../config";
+import { km } from "../lib/format";
+import { currentPosition } from "../lib/geo";
+import { useAsync } from "../lib/useAsync";
+
+export default function RoutePage() {
+  const neighborhoods = useAsync(() => api.neighborhoods(), []);
+  const connections = useAsync(() => api.connections(), []);
+  const ranking = useAsync(() => api.ranking(), []);
+  const [params] = useSearchParams();
+  const [from, setFrom] = useState(params.get("from") ?? "");
+  const [to, setTo] = useState(params.get("to") ?? "");
+  const [route, setRoute] = useState<SafeRoute | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const byId = new Map(neighborhoods.data?.map((n) => [n.id, n]));
+  const severity = new Map(ranking.data?.map((r) => [r.neighborhood_id, r.active_severity]));
+  const maxSev = Math.max(1, ...(ranking.data?.map((r) => r.active_severity) ?? [1]));
+
+  const calc = async (a = from, b = to) => {
+    setError(null);
+    setMessage(null);
+    try {
+      setRoute(await api.safeRoute(Number(a), Number(b)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    }
+  };
+
+  // llega desde Vigia con ?from=&to=: se calcula de una
+  useEffect(() => {
+    const a = params.get("from");
+    const b = params.get("to");
+    if (a && b) calc(a, b);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // "Estoy en la U, necesito ir al centro": Vigia saca origen (o usa el GPS) y destino
+  const ask = async (text: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.voiceRoute(text, await currentPosition());
+      setMessage(r.message);
+      if (r.route) {
+        setRoute(r.route);
+        setFrom(String(r.route.from_neighborhood.id));
+        setTo(String(r.route.to_neighborhood.id));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="stack-l">
+      <section className="voice-report card">
+        <div className="voice-report-head">
+          <span className="assistant-logo">
+            <Icon name="route" size={20} />
+          </span>
+          <div>
+            <h2>¿A dónde vas?</h2>
+            <p className="muted">Díselo a {ASSISTANT_NAME}: sale desde tu ubicación y evita los barrios con alertas.</p>
+          </div>
+        </div>
+        <VoiceInput big busy={busy} onSubmit={ask} placeholder="Ej: necesito ir hasta el Centro" />
+        {busy && <Loading text="Buscando la ruta más segura…" />}
+        {message && !busy && <p className="voice-said">{message}</p>}
+      </section>
+
+      <p className="muted">O elige los barrios:</p>
+      <div className="row gap-s wrap">
+        <select value={from} onChange={(e) => setFrom(e.target.value)}>
+          <option value="">Desde…</option>
+<HoodOptions hoods={neighborhoods.data} />
+        </select>
+        <select value={to} onChange={(e) => setTo(e.target.value)}>
+          <option value="">Hasta…</option>
+<HoodOptions hoods={neighborhoods.data} />
+        </select>
+        <button className="btn" disabled={!from || !to || from === to} onClick={() => calc()}>
+          Calcular
+        </button>
+      </div>
+      <ErrorBox message={error} />
+      {route && (
+        <Card title="Resultado">
+          <p>{route.explanation}</p>
+          <p>
+            <b className="green-text">Segura ({km(route.safe_path_meters)}):</b> {route.safe_path.map((n) => n.name).join(" → ")}
+          </p>
+          <p>
+            <b className="gray-text">Más corta ({km(route.shortest_path_meters)}):</b> {route.shortest_path.map((n) => n.name).join(" → ")}
+          </p>
+          <p className="muted">Menos barrios (BFS): {route.fewest_hops_path.map((n) => n.name).join(" → ")}</p>
+        </Card>
+      )}
+      <BaseMap height={520}>
+        {connections.data?.map((c, i) => {
+          const a = byId.get(c.from_id);
+          const b = byId.get(c.to_id);
+          if (!a || !b) return null;
+          return <Polyline key={i} positions={[[a.latitude, a.longitude], [b.latitude, b.longitude]]} pathOptions={{ color: "#94a3b8", weight: 2, dashArray: "4 6" }} />;
+        })}
+        {route && (
+          <Polyline positions={route.shortest_path.map((n) => [n.latitude, n.longitude])} pathOptions={{ color: "#94a3b8", weight: 6, opacity: 0.6 }} />
+        )}
+        {route && <Polyline positions={route.safe_path.map((n) => [n.latitude, n.longitude])} pathOptions={{ color: "#10b981", weight: 5 }} />}
+        {neighborhoods.data?.map((n) => {
+          const s = severity.get(n.id) ?? 0;
+          return (
+            <CircleMarker
+              key={n.id}
+              center={[n.latitude, n.longitude]}
+              radius={s ? 8 + (s / maxSev) * 12 : 4}
+              pathOptions={{ color: "#fff", weight: 2, fillColor: s ? "#dc2626" : "#2563eb", fillOpacity: 0.25 + (s / maxSev) * 0.6 }}
+            >
+              <Tooltip>
+                {n.name} · gravedad activa {s}
+              </Tooltip>
+            </CircleMarker>
+          );
+        })}
+      </BaseMap>
+    </div>
+  );
+}
