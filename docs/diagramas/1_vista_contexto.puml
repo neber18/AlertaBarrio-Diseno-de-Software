@@ -1,24 +1,30 @@
 @startuml Vista_Contexto_AlertaBarrio
 title Vista de Contexto - AlertaBarrio (diagrama de nivel 0)
 skinparam rectangleBackgroundColor #FFF6D5
-skinparam circleBackgroundColor #DDEBFF
+skinparam usecaseBackgroundColor #DDEBFF
 left to right direction
 
 rectangle "Visitante\n(sin sesión)" as VI
 rectangle "Vecino\n(rol citizen)" as V
-circle "AlertaBarrio\n(API REST)" as S
+usecase "AlertaBarrio\n(API REST)" as S
 rectangle "Moderador\n(rol moderator)" as M
 rectangle "Administrador\n(rol admin)" as AD
 
-VI --> S : Datos de registro,\nconsultas públicas
-S --> VI : Cuenta + token JWT, alertas públicas,\nranking de barrios, ruta segura,\nestado del sistema
+VI --> S : Datos de registro,\nconsultas públicas (alertas, ranking,\nruta segura, /stats, /ds/state, /health)
+S --> VI : Cuenta + token JWT, alertas públicas,\nranking de barrios, ruta segura,\nestadísticas y estado de las estructuras\n(sin autenticación)
 
 V --> S : Credenciales y código 2FA,\nreportes (coordenadas, foto),\nconfirmaciones, barrios a seguir,\norigen y destino
 S --> V : Token JWT, historial de sus reportes,\nposición en la cola, alertas del barrio,\nnotificaciones, ruta segura
 
 S --> M : Cola de reportes por prioridad,\nreportes en revisión
-M --> S : Tomar siguiente, publicar o\nrechazar con nota, deshacer
+M --> S : Tomar siguiente, publicar o rechazar\ncon nota, deshacer,\ndespacho de notificaciones
 
-S --> AD : Estadísticas y estado de las\nestructuras de datos
-AD --> S : Moderación, despacho\nde notificaciones
+S --> AD : Cola de reportes por prioridad,\nreportes en revisión
+AD --> S : Tomar siguiente, publicar o rechazar\ncon nota, deshacer,\ndespacho de notificaciones
+
+note bottom of AD
+  admin y moderator comparten permisos:
+  require_moderator acepta los dos roles
+  (security.py) y no hay endpoints solo para admin.
+end note
 @enduml

@@ -14,12 +14,13 @@ AlertaBarrio como caja negra y los flujos de información con su entorno.
 
 | Actor | Hacia AlertaBarrio | Desde AlertaBarrio |
 |-------|--------------------|--------------------|
-| Visitante (sin sesión) | Datos de registro, consultas públicas | Cuenta + token JWT, alertas públicas, ranking de barrios, ruta segura, estado del sistema |
+| Visitante (sin sesión) | Datos de registro, consultas públicas | Cuenta + token JWT, alertas públicas, ranking de barrios, ruta segura, estadísticas y estado de las estructuras (`/stats`, `/ds/state` y `/health` no piden autenticación) |
 | Vecino (rol citizen) | Credenciales y código 2FA, reportes con coordenadas y foto, confirmaciones, barrios a seguir, origen y destino | Token JWT, historial de sus reportes, posición en la cola, alertas del barrio, notificaciones, ruta segura |
-| Moderador (rol moderator) | Tomar siguiente, publicar o rechazar con nota, deshacer | Cola de reportes por prioridad, reportes en revisión |
-| Administrador (rol admin) | Moderación, despacho de notificaciones | Estadísticas y estado de las estructuras de datos |
+| Moderador (rol moderator) | Tomar siguiente, publicar o rechazar con nota, deshacer, despacho de notificaciones | Cola de reportes por prioridad, reportes en revisión |
+| Administrador (rol admin) | Lo mismo que el moderador | Lo mismo que el moderador |
 
-Todos los actores llegan a AlertaBarrio desde un cliente HTTP (Swagger UI, Postman o `curl`).
+- **admin y moderator comparten permisos:** `require_moderator` (en `security.py`) acepta los dos roles y no hay endpoints exclusivos del administrador.
+- Todos los actores llegan a AlertaBarrio desde un cliente HTTP (Swagger UI, Postman o `curl`).
 
 ---
 
