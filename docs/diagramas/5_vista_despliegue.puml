@@ -1,20 +1,36 @@
 @startuml Vista_Despliegue_AlertaBarrio
-title Vista de Despliegue - AlertaBarrio
+title Vista de Despliegue - AlertaBarrio (producción)
 
-node "PC / celular del usuario" as N1 {
+node "PC / celular del usuario\n<<dispositivo>>" as N1 {
   artifact "Cliente HTTP\n(Swagger UI, Postman, curl)" as A1
-}
-node "Render - servicio web\n<<Docker, Python 3.11>>" as N3 {
-  artifact "alertabarrio-backend\n(FastAPI + uvicorn)" as A3
-}
-node "Render - servicio web\n<<Docker, Python 3.11>>" as N4 {
-  artifact "alertabarrio-ai\n(FastAPI)" as A4
-}
-node "MongoDB Atlas - clúster M0 (AWS)\n<<MongoDB 7>>" as N5 {
-  database "colecciones del sistema" as A5
+  artifact "App autenticadora\n(códigos TOTP 2FA)" as A1b
 }
 
-N1 --> N3 : HTTPS / JSON (API REST)
+cloud "Render (nube)" as R {
+  node "Servicio web alertabarrio-backend\n<<contenedor Docker, python:3.11-slim>>" as N3 {
+    artifact "backend (FastAPI + uvicorn)\npuerto $PORT (8000)" as A3
+    artifact "AlertEngine\n(estructuras en memoria)" as A3b
+  }
+  node "Servicio web alertabarrio-ai\n<<contenedor Docker, python:3.11-slim>>" as N4 {
+    artifact "ai (FastAPI + uvicorn)\npuerto $PORT (8001)" as A4
+  }
+}
+
+node "MongoDB Atlas - clúster M0 (AWS)\n<<replica set, MongoDB 7>>" as N5 {
+  database "base alertabarrio\n9 colecciones + counters" as A5
+}
+
+cloud "Proveedor de LLM\n(Gemini API, opcional)" as N6
+
+node "GitHub\n<<repositorio + Actions>>" as N7 {
+  artifact "ci.yml\n(pruebas, imágenes)" as A7
+  artifact "keep-alive.yml\n(ping cada 10 min)" as A7b
+}
+
+N1 --> N3 : HTTPS 443 / JSON (API REST)
 N3 --> N4 : HTTPS / JSON
 N3 --> N5 : MongoDB / TCP 27017 (TLS)
+N4 --> N6 : HTTPS (resumen y chat)
+N7 --> N3 : HTTPS (deploy hook, ping)
+N7 --> N4 : HTTPS (deploy hook, ping)
 @enduml

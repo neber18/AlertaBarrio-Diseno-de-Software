@@ -1,17 +1,28 @@
 @startuml Vista_Contexto_AlertaBarrio
-title Vista de Contexto - AlertaBarrio
+title Vista de Contexto - AlertaBarrio (diagrama de nivel 0)
 skinparam rectangleBackgroundColor #FFF6D5
+skinparam circleBackgroundColor #DDEBFF
 left to right direction
 
-rectangle "Vecinos\n(cliente HTTP: Swagger,\nPostman, curl)" as V
-rectangle "Moderadores /\nAdministradores" as M
+rectangle "Visitante\n(sin sesión)" as VI
+rectangle "Vecino\n(rol citizen)" as V
+circle "AlertaBarrio\n(API REST)" as S
+rectangle "Moderador\n(rol moderator)" as M
+rectangle "Administrador\n(rol admin)" as AD
 rectangle "Componente de IA\n(alertabarrio-ai)" as IA
-circle "AlertaBarrio" as S
 
-V --> S : Reportes con coordenadas, confirmaciones,\nbarrios a seguir, preguntas
-S --> V : Alertas del barrio, notificaciones,\nmapa de calor, ruta segura
-M --> S : Publicar, rechazar, deshacer
-S --> M : Cola de reportes por prioridad,\nestadísticas
-S --> IA : Texto del reporte,\nhistorial del barrio, preguntas
-IA --> S : Tipo sugerido, riesgo de zona,\nmapa de calor, resumen
+VI --> S : Datos de registro,\nconsultas públicas
+S --> VI : Cuenta + token JWT, alertas públicas,\nranking de barrios, estado del sistema
+
+V --> S : Credenciales y código 2FA,\nreportes (coordenadas, foto),\nconfirmaciones, barrios a seguir,\npreguntas a Vigía, origen y destino
+S --> V : Token JWT, historial de sus reportes,\nalertas del barrio, notificaciones,\nmapa de calor, resumen diario,\nruta segura, respuestas de Vigía
+
+S --> M : Cola de reportes por prioridad,\nreportes en revisión, análisis de la IA
+M --> S : Tomar siguiente, publicar o\nrechazar con nota, deshacer
+
+S --> AD : Estadísticas, estado de las\nestructuras de datos y de la IA
+AD --> S : Moderación, despacho\nde notificaciones
+
+S --> IA : Texto del reporte, historial del barrio,\nreportes para el mapa de calor,\ndatos del día, preguntas, pedidos de ruta
+IA --> S : Tipo sugerido y confianza, riesgo de zona,\nmapa de calor (KDE), resumen diario,\nborrador de reporte, origen/destino, respuestas
 @enduml

@@ -1,74 +1,131 @@
 @startuml Vista_Desarrollo_AlertaBarrio
-title Vista de Desarrollo - AlertaBarrio
+title Vista de Desarrollo - Organización del código de AlertaBarrio (monorepo)
 skinparam packageStyle rectangle
 
 package "Cliente (fuera del repositorio)" {
-  class ClienteHTTP <<Swagger UI / Postman / curl>> {
-  +GET /api/v1/...
-  +POST /api/v1/...
-}
+  class ClienteHTTP <<Swagger UI / Postman / curl>>
 }
 
-package "backend/ (FastAPI)" {
-  class Main {
-  +app
-}
-  class Routers {
-  auth, reports, moderation
-  notifications, routes, ai, catalog
-}
-  class Security {
-  +get_current_user()
-  +require_moderator()
-  +hash_password()
-}
-  class Services {
-  engine (AlertEngine)
-  report_service, geo
-}
-  class AiClient {
-  +analyze_report()
-  +wake_up()
-}
-  class Structures {
-  DynamicArray, LinkedList, Stack
-  Queue, PriorityQueue, HashTable
-  AVL, Graph, sorting
-}
-  class Database {
-  +get_db()
-  +next_id() <<counters>>
-  +ensure_indexes()
-}
-  class Models {
-  documentos «document» / «embedded»
-  (dataclasses + PyMongo)
-}
+package "backend/ (FastAPI + PyMongo)" {
+  package "Capa de presentación (API)" {
+    class main_py <<main.py>> {
+      app FastAPI, CORS, cabeceras
+    }
+    class routers <<routers/>> {
+      auth, reports, moderation
+      notifications, routes, ai
+      catalog, general
+    }
+    class schemas_py <<schemas.py>> {
+      modelos de entrada/salida
+    }
+    class serializers_py <<serializers.py>>
+  }
+  package "Capa de negocio" {
+    class security_py <<security.py>> {
+      bcrypt, JWT, TOTP
+      LoginThrottle, RateLimiter
+    }
+    class services <<services/>> {
+      engine (AlertEngine)
+      report_service, ai_client, geo
+    }
+    class structures <<structures/>> {
+      dynamic_array, linked_list
+      stack, queue, priority_queue
+      hash_table, bst (AVL)
+      graph, sorting
+    }
+  }
+  package "Capa de persistencia" {
+    class models_py <<models.py>> {
+      Document / Embedded
+    }
+    class database_py <<database.py>> {
+      cliente MongoDB
+      counters, índices
+    }
+    class seed_py <<seed.py>> {
+      barrios_pasto.py
+      datos de ejemplo
+    }
+  }
+  class config_py <<config.py>> {
+    variables de entorno
+  }
+  class backend_tests <<tests/>> {
+    test_api, test_structures
+  }
 }
 
-package "Persistencia (MongoDB 7 / Atlas)" {
-  class DB <<MongoDB>> {
-  users, neighborhoods, incident_types
-  reports, subscriptions, notifications
-  ai_analyses, daily_summaries
-  risk_hotspots, counters
-}
-}
 package "ai/ (FastAPI)" {
-  class ComponenteIA {
-  Naive Bayes, KDE
-  resumen diario, chat
-}
+  class ai_main <<main.py>> {
+    /analyze-report, /heatmap
+    /summary, /chat
+    /interpret-report, /interpret-route
+  }
+  class ai_models <<models/>> {
+    classifier (Naive Bayes)
+    risk (KDE, frecuencia)
+    training_data
+  }
+  class ai_providers <<providers/>> {
+    summary (Gemini, Ollama,
+    OpenAI-compatible, Anthropic, plantilla)
+    interpret
+  }
+  class ai_config <<config.py>>
+  class ai_tests <<tests/>>
 }
 
-ClienteHTTP ..> Main : HTTP/JSON
-Main ..> Routers
-Routers ..> Security
-Routers ..> Services
-Services ..> Structures
-Services ..> Models
-Services ..> AiClient
-Models ..> Database
-Database ..> DB : PyMongo / TCP 27017
-AiClient ..> ComponenteIA : HTTP/JSON
+package "Infraestructura" {
+  class compose <<docker-compose.yml>> {
+    mongodb, mongo-express
+    backend, ai
+  }
+  class dockerfiles <<Dockerfile x2>>
+  class workflows <<.github/workflows>> {
+    ci.yml, keep-alive.yml
+  }
+  class render <<render.yaml>>
+  class runsh <<run.sh>>
+}
+
+package "docs/" {
+  class wiki <<wiki/>>
+  class issues <<issues/ HU_001..HU_021>>
+  class diagramas <<diagramas/>>
+}
+
+package "Base de datos" {
+  class DB <<MongoDB 7 / Atlas>> {
+    users, neighborhoods, incident_types
+    reports, subscriptions, notifications
+    ai_analyses, daily_summaries
+    risk_hotspots, counters
+  }
+}
+
+ClienteHTTP ..> main_py : HTTP/JSON
+main_py ..> routers
+main_py ..> config_py
+routers ..> schemas_py
+routers ..> serializers_py
+routers ..> security_py
+routers ..> services
+services ..> structures
+services ..> models_py
+security_py ..> models_py
+models_py ..> database_py
+seed_py ..> models_py
+database_py ..> DB : PyMongo / TCP 27017
+services ..> ai_main : HTTP/JSON (ai_client)
+ai_main ..> ai_models
+ai_main ..> ai_providers
+ai_main ..> ai_config
+backend_tests ..> routers
+ai_tests ..> ai_main
+compose ..> dockerfiles
+workflows ..> backend_tests
+workflows ..> ai_tests
 @enduml

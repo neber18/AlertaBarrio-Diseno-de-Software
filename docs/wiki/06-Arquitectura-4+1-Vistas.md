@@ -70,6 +70,10 @@ Diagrama de clases del dominio. Cada clase lleva el estereotipo **«document»**
 - Los **ids son enteros** (1, 2, 3…), generados con la colección `counters`, para no cambiar las URLs de la API ni las estructuras de datos.
 - Las clases embebidas no tienen colección ni id propio (salvo *CambioEstado*, que guarda un id para poder deshacer exactamente ese cambio).
 
+**Motor de alertas:** al arrancar, el backend carga los datos en `AlertEngine`, que usa las estructuras propias (heap, pila, cola, lista enlazada, tabla hash, AVL, grafo y arreglo dinámico).
+
+![Vista Logica - Motor](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Logica_Motor_AlertaBarrio.png)
+
 ---
 
 ## 4. Vista de Desarrollo

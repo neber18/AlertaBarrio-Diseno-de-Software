@@ -1,5 +1,5 @@
 @startuml Vista_Logica_AlertaBarrio
-title Vista Lógica (Diagrama de Clases) - AlertaBarrio (MongoDB)
+title Vista Lógica 1/2 - Modelo de dominio (MongoDB) - AlertaBarrio
 skinparam classAttributeIconSize 0
 
 class Usuario <<document>> {
@@ -11,6 +11,9 @@ class Usuario <<document>> {
   +rol : Rol
   +activo : boolean
   +totpActivo : boolean
+  +tokenVersion : int
+  +fechaCreacion : DateTime
+  +ultimoIngreso : DateTime
   +iniciarSesion()
   +cambiarPassword()
   +activar2FA()
@@ -27,6 +30,7 @@ class Barrio <<document>> {
   +comuna : int
   +latitud : double
   +longitud : double
+  +fechaCreacion : DateTime
 }
 class Via <<embedded>> {
   +barrioDestinoId : int
@@ -53,6 +57,8 @@ class Reporte <<document>> {
   +confianzaIA : double
   +riesgoZonaIA : double
   +nombreVecino : String
+  +fechaCreacion : DateTime
+  +fechaActualizacion : DateTime
   +cambiarEstado()
   +deshacer()
   +verificar()
@@ -72,6 +78,7 @@ class CambioEstado <<embedded>> {
   +id : int
   +estadoAnterior : String
   +estadoNuevo : String
+  +cambiadoPor : int
   +nota : String
   +fecha : DateTime
 }
@@ -79,6 +86,7 @@ class Verificacion <<embedded>> {
   +usuarioId : int
   +confirmado : boolean
   +comentario : String
+  +fecha : DateTime
 }
 class Suscripcion <<document>> {
   +fecha : DateTime
@@ -94,16 +102,20 @@ class AnalisisIA <<document>> {
   +modelo : String
   +latenciaMs : int
   +resultado : JSON
+  +fecha : DateTime
 }
 class ResumenDiario <<document>> {
   +fecha : String
   +texto : String
   +cantidadReportes : int
+  +modelo : String
 }
 class ZonaRiesgo <<document>> {
   +diaSemana : int
   +franjaHoraria : int
   +riesgo : double
+  +modelo : String
+  +fechaGeneracion : DateTime
 }
 
 Usuario --> Rol
@@ -126,4 +138,5 @@ Notificacion "*" --> "0..1" Reporte
 ResumenDiario "*" --> "1" Barrio
 ZonaRiesgo "*" --> "1" Barrio
 AnalisisIA "*" --> "0..1" Reporte
+AnalisisIA "*" --> "0..1" Barrio
 @enduml

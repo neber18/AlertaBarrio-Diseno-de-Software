@@ -1,34 +1,65 @@
 @startuml Vista_Funcional_AlertaBarrio
-title Vista Funcional - AlertaBarrio
+title Vista Funcional (Diagrama de Componentes) - AlertaBarrio
 skinparam componentStyle uml2
 left to right direction
 
+actor Visitante
+actor Vecino
+actor Moderador
+
 component "<<component>>\nAutenticación y Seguridad\n(2)" as Auth
-component "<<component>>\nComponente de IA (Vigía)\n(3)" as IA
+component "<<component>>\nComponente de IA - Vigía\n(3)" as IA
 component "<<component>>\nNotificaciones\n(4)" as Notif
+component "<<component>>\nCatálogo de Barrios\n(6)" as Cat
+component "<<component>>\nMotor de Alertas\n(AlertEngine)\n(7)" as Eng
+component "<<component>>\nPersistencia MongoDB\n(8)" as Per
 component "<<component>>\nRutas Seguras\n(5)" as Rutas
 component "<<component>>\nGestión de Reportes\n(1)" as Rep
 
-() "validar acceso" as I1
-() "analizar reporte" as I2
-() "enviar notificación" as I3
-() "calcular ruta" as I4
-() "moderar reportes\n(management port)" as I5
-() "recibir reporte" as I6
+() "iniciar sesión" as A0
+() "validar acceso" as A1
+() "analizar reporte" as I1
+() "conversar con Vigía" as I2
+() "enviar notificación" as N1
+() "gestionar suscripciones" as N2
+() "consultar barrios" as C1
+() "ordenar en memoria\n(cola, pila, feed, AVL)" as E1
+() "guardar documentos" as P1
+() "calcular ruta" as R1
+() "recibir reporte\n(service port)" as S1
+() "consultar alertas" as S2
+() "moderar reportes\n(management port)" as S3
 
-Auth -- I1
+Auth -- A0
+Auth -- A1
+IA -- I1
 IA -- I2
-Notif -- I3
-Rutas -- I4
-I1 )-- Rep : service port
-I2 )-- Rep : service port
-I3 )-- Rep : service port
-Rep -- I5
-Rep -- I6
+Notif -- N1
+Notif -- N2
+Cat -- C1
+Eng -- E1
+Per -- P1
+Rutas -- R1
+Rep -- S1
+Rep -- S2
+Rep -- S3
 
-actor Moderador
-actor Vecino
-Moderador ..> I5 : <<use>>
-Vecino ..> I6 : <<use>>
-Vecino ..> I4 : <<use>>
+A1 )-- Rep : requiere
+I1 )-- Rep : requiere
+N1 )-- Rep : requiere
+C1 )-- Rep : requiere
+E1 )-- Rep : requiere
+P1 )-- Rep : requiere
+C1 )-- Rutas : requiere
+E1 )-- Notif : requiere
+P1 )-- Notif : requiere
+P1 )-- Auth : requiere
+
+Visitante ..> A0 : <<use>>
+Visitante ..> S2 : <<use>>
+Visitante ..> R1 : <<use>>
+Vecino ..> S1 : <<use>>
+Vecino ..> N2 : <<use>>
+Vecino ..> I2 : <<use>>
+Moderador ..> S3 : <<use>>
 @enduml
