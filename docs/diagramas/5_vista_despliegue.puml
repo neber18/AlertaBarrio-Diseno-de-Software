@@ -9,7 +9,7 @@ node "PC / celular del usuario\n<<dispositivo>>" as N1 {
 cloud "Render (nube)" as R {
   node "Servicio web alertabarrio-backend\n<<contenedor Docker, python:3.11-slim>>" as N3 {
     artifact "backend (FastAPI + uvicorn)\npuerto $PORT (8000)" as A3
-    artifact "AlertEngine\n(estructuras en memoria)" as A3b
+    artifact "MotorAlertas\n(estructuras en memoria)" as A3b
   }
   node "Servicio web alertabarrio-ai\n<<contenedor Docker, python:3.11-slim>>" as N4 {
     artifact "ai (FastAPI + uvicorn)\npuerto $PORT (8001)" as A4

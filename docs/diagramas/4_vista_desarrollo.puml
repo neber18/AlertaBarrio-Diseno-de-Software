@@ -8,29 +8,29 @@ package "Cliente (fuera del repositorio)" {
 
 package "backend/ (FastAPI + PyMongo)" {
   package "Capa de presentación (API)" {
-    class main_py <<main.py>> {
-      app FastAPI, CORS, cabeceras
+    class Aplicacion <<main.py>> {
+      aplicación FastAPI, CORS, cabeceras
     }
-    class routers <<routers/>> {
+    class Controladores <<routers/>> {
       auth, reports, moderation
       notifications, routes, ai
       catalog, general
     }
-    class schemas_py <<schemas.py>> {
+    class Esquemas <<schemas.py>> {
       modelos de entrada/salida
     }
-    class serializers_py <<serializers.py>>
+    class Serializadores <<serializers.py>>
   }
   package "Capa de negocio" {
-    class security_py <<security.py>> {
+    class Seguridad <<security.py>> {
       bcrypt, JWT, TOTP
-      LoginThrottle, RateLimiter
+      bloqueo por intentos, límite de solicitudes
     }
-    class services <<services/>> {
-      engine (AlertEngine)
+    class Servicios <<services/>> {
+      engine (MotorAlertas)
       report_service, ai_client, geo
     }
-    class structures <<structures/>> {
+    class EstructurasDeDatos <<structures/>> {
       dynamic_array, linked_list
       stack, queue, priority_queue
       hash_table, bst (AVL)
@@ -38,67 +38,67 @@ package "backend/ (FastAPI + PyMongo)" {
     }
   }
   package "Capa de persistencia" {
-    class models_py <<models.py>> {
+    class Modelos <<models.py>> {
       Document / Embedded
     }
-    class database_py <<database.py>> {
+    class AccesoDatos <<database.py>> {
       cliente MongoDB
       counters, índices
     }
-    class seed_py <<seed.py>> {
+    class DatosIniciales <<seed.py>> {
       barrios_pasto.py
       datos de ejemplo
     }
   }
-  class config_py <<config.py>> {
+  class Configuracion <<config.py>> {
     variables de entorno
   }
-  class backend_tests <<tests/>> {
+  class PruebasBackend <<tests/>> {
     test_api, test_structures
   }
 }
 
 package "ai/ (FastAPI)" {
-  class ai_main <<main.py>> {
+  class AplicacionIA <<main.py>> {
     /analyze-report, /heatmap
     /summary, /chat
     /interpret-report, /interpret-route
   }
-  class ai_models <<models/>> {
+  class ModelosIA <<models/>> {
     classifier (Naive Bayes)
     risk (KDE, frecuencia)
     training_data
   }
-  class ai_providers <<providers/>> {
+  class ProveedoresIA <<providers/>> {
     summary (Gemini, Ollama,
     OpenAI-compatible, Anthropic, plantilla)
     interpret
   }
-  class ai_config <<config.py>>
-  class ai_tests <<tests/>>
+  class ConfiguracionIA <<config.py>>
+  class PruebasIA <<tests/>>
 }
 
 package "Infraestructura" {
-  class compose <<docker-compose.yml>> {
+  class Contenedores <<docker-compose.yml>> {
     mongodb, mongo-express
     backend, ai
   }
-  class dockerfiles <<Dockerfile x2>>
-  class workflows <<.github/workflows>> {
+  class ImagenesDocker <<Dockerfile x2>>
+  class FlujosCI <<.github/workflows>> {
     ci.yml, keep-alive.yml
   }
-  class render <<render.yaml>>
-  class runsh <<run.sh>>
+  class DespliegueRender <<render.yaml>>
+  class ScriptArranque <<run.sh>>
 }
 
 package "docs/" {
-  class wiki <<wiki/>>
-  class issues <<issues/ HU_001..HU_021>>
-  class diagramas <<diagramas/>>
+  class Wiki <<wiki/>>
+  class HistoriasUsuario <<issues/ HU_001..HU_021>>
+  class Diagramas <<diagramas/>>
 }
 
 package "Base de datos" {
-  class DB <<MongoDB 7 / Atlas>> {
+  class BaseMongo <<MongoDB 7 / Atlas>> {
     users, neighborhoods, incident_types
     reports, subscriptions, notifications
     ai_analyses, daily_summaries
@@ -106,26 +106,26 @@ package "Base de datos" {
   }
 }
 
-ClienteHTTP ..> main_py : HTTP/JSON
-main_py ..> routers
-main_py ..> config_py
-routers ..> schemas_py
-routers ..> serializers_py
-routers ..> security_py
-routers ..> services
-services ..> structures
-services ..> models_py
-security_py ..> models_py
-models_py ..> database_py
-seed_py ..> models_py
-database_py ..> DB : PyMongo / TCP 27017
-services ..> ai_main : HTTP/JSON (ai_client)
-ai_main ..> ai_models
-ai_main ..> ai_providers
-ai_main ..> ai_config
-backend_tests ..> routers
-ai_tests ..> ai_main
-compose ..> dockerfiles
-workflows ..> backend_tests
-workflows ..> ai_tests
+ClienteHTTP ..> Aplicacion : HTTP/JSON
+Aplicacion ..> Controladores
+Aplicacion ..> Configuracion
+Controladores ..> Esquemas
+Controladores ..> Serializadores
+Controladores ..> Seguridad
+Controladores ..> Servicios
+Servicios ..> EstructurasDeDatos
+Servicios ..> Modelos
+Seguridad ..> Modelos
+Modelos ..> AccesoDatos
+DatosIniciales ..> Modelos
+AccesoDatos ..> BaseMongo : PyMongo / TCP 27017
+Servicios ..> AplicacionIA : HTTP/JSON (ai_client)
+AplicacionIA ..> ModelosIA
+AplicacionIA ..> ProveedoresIA
+AplicacionIA ..> ConfiguracionIA
+PruebasBackend ..> Controladores
+PruebasIA ..> AplicacionIA
+Contenedores ..> ImagenesDocker
+FlujosCI ..> PruebasBackend
+FlujosCI ..> PruebasIA
 @enduml

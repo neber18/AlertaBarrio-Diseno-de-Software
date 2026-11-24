@@ -70,7 +70,7 @@ Diagrama de clases del dominio. Cada clase lleva el estereotipo **«document»**
 - Los **ids son enteros** (1, 2, 3…), generados con la colección `counters`, para no cambiar las URLs de la API ni las estructuras de datos.
 - Las clases embebidas no tienen colección ni id propio (salvo *CambioEstado*, que guarda un id para poder deshacer exactamente ese cambio).
 
-**Motor de alertas (mismo diagrama, parte de arriba):** al arrancar, el backend carga los datos en `AlertEngine`, que usa las estructuras propias (heap, pila, cola, lista enlazada, tabla hash, AVL, grafo y arreglo dinámico). `ReportItem` se crea desde *Reporte*, `StatusEntry` desde *CambioEstado* y cada `PendingNotification` se guarda como *Notificacion*.
+**Motor de alertas (mismo diagrama, parte de arriba):** al arrancar, el backend carga los datos en *MotorAlertas* (`AlertEngine` en el código), que usa las estructuras propias: ColaPrioridad (heap), Pila, Cola, ListaEnlazada, TablaHash, ArbolAVL, Grafo y ArregloDinamico. *ElementoReporte* se crea desde *Reporte*, *EntradaEstado* desde *CambioEstado* y cada *NotificacionPendiente* se guarda como *Notificacion*. Los diagramas usan nombres en español; la nota del diagrama indica el nombre de cada clase en el código.
 
 ---
 

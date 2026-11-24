@@ -11,7 +11,7 @@ component "<<component>>\nAutenticación y Seguridad\n(2)" as Auth
 component "<<component>>\nComponente de IA - Vigía\n(3)" as IA
 component "<<component>>\nNotificaciones\n(4)" as Notif
 component "<<component>>\nCatálogo de Barrios\n(6)" as Cat
-component "<<component>>\nMotor de Alertas\n(AlertEngine)\n(7)" as Eng
+component "<<component>>\nMotor de Alertas\n(7)" as Eng
 component "<<component>>\nPersistencia MongoDB\n(8)" as Per
 component "<<component>>\nRutas Seguras\n(5)" as Rutas
 component "<<component>>\nGestión de Reportes\n(1)" as Rep
