@@ -15,7 +15,7 @@ services:
       - key: AI_SERVICE_URL
         value: https://alertabarrio-ai.onrender.com
       - key: CORS_ORIGINS
-        value: https://alertabarrio-frontend.vercel.app,http://localhost:5173
+        value: http://localhost:8000
       - key: SEED_ON_STARTUP
         value: "true"
       - key: TIMEZONE

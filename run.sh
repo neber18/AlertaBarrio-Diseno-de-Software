@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Levanta AlertaBarrio en local: MongoDB + IA + backend + frontend.
+# Levanta AlertaBarrio en local: MongoDB + IA + backend.
 # Uso: ./run.sh      (Ctrl+C para detener todo)
 set -e
 
@@ -8,13 +8,13 @@ LOGS="$PROJECT_DIR/.logs"
 mkdir -p "$LOGS"
 
 # ── 1. Liberar puertos ────────────────────────────────────────────────────────
-echo "[1/5] Liberando puertos 8000, 8001 y 5173..."
-for port in 8000 8001 5173; do
+echo "[1/4] Liberando puertos 8000 y 8001..."
+for port in 8000 8001; do
   (lsof -ti:"$port" | xargs kill -9) 2>/dev/null || true
 done
 
 # ── 2. MongoDB: usa el de la maquina si ya hay uno en :27017; si no, Docker ───
-echo "[2/5] Preparando MongoDB..."
+echo "[2/4] Preparando MongoDB..."
 if (ss -tln 2>/dev/null || netstat -tln 2>/dev/null) | grep -q ':27017'; then
   echo "       Ya hay un MongoDB en :27017, se usa ese."
 else
@@ -38,13 +38,13 @@ setup_python() {
 }
 
 # ── 3. Componente de IA (8001) ────────────────────────────────────────────────
-echo "[3/5] Iniciando el componente de IA..."
+echo "[3/4] Iniciando el componente de IA..."
 setup_python ai
 .venv/bin/uvicorn app.main:app --port 8001 > "$LOGS/ai.log" 2>&1 &
 PIDS="$!"
 
 # ── 4. Backend (8000) ─────────────────────────────────────────────────────────
-echo "[4/5] Iniciando el backend..."
+echo "[4/4] Iniciando el backend..."
 setup_python backend
 AI_SERVICE_URL=http://localhost:8001 .venv/bin/uvicorn app.main:app --port 8000 > "$LOGS/backend.log" 2>&1 &
 BACKEND_PID=$!
@@ -59,19 +59,10 @@ until curl -sf http://localhost:8000/health >/dev/null 2>&1; do
 done
 echo "       Backend listo en http://localhost:8000 (Swagger en /docs)"
 
-# ── 5. Frontend (5173) ────────────────────────────────────────────────────────
-echo "[5/5] Iniciando el frontend..."
-cd "$PROJECT_DIR/frontend"
-[ -d node_modules ] || npm ci --silent
-VITE_API_URL=http://localhost:8000 VITE_AI_URL=http://localhost:8001 npm run dev -- --port 5173 > "$LOGS/frontend.log" 2>&1 &
-PIDS="$PIDS $!"
-until curl -sf http://localhost:5173 >/dev/null 2>&1; do sleep 2; done
-
 trap 'echo; echo "Deteniendo..."; kill $PIDS 2>/dev/null; exit 0' INT TERM
 echo ""
 echo "=============================================="
 echo "  AlertaBarrio esta corriendo"
-echo "  Frontend:  http://localhost:5173"
 echo "  Backend:   http://localhost:8000/docs"
 echo "  IA:        http://localhost:8001/docs"
 echo "  Logs:      $LOGS"
