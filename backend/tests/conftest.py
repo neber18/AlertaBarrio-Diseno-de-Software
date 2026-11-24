@@ -4,12 +4,9 @@ import os
 # GitHub Actions) o, si no viene, el de la maquina (docker compose up mongodb).
 # Siempre en una base aparte, "alertabarrio_test", que se borra al empezar.
 os.environ.setdefault("MONGODB_URI", "mongodb://localhost:27017/alertabarrio_test")
-os.environ.setdefault("AI_SERVICE_URL", "http://ai-no-disponible.invalid")
-os.environ.setdefault("AI_TIMEOUT_SECONDS", "1")
 # bcrypt con pocas rondas para que las pruebas sean rapidas
 os.environ.setdefault("BCRYPT_ROUNDS", "4")
 os.environ.setdefault("AUTH_RATE_LIMIT", "1000")
-os.environ.setdefault("AI_WAKE_SECONDS", "0")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,42 +14,9 @@ from fastapi.testclient import TestClient
 from app import models
 from app.database import get_client, get_database
 from app.main import app
-from app.services import ai_client
 
 PASSWORD = "Alerta2026*"
 
-
-def fake_ai_post(path: str, payload: dict, wait_s: float = 0):
-    """Simula el componente de IA para no depender de la red en las pruebas."""
-    if path.endswith("analyze-report"):
-        text = payload["description"].lower()
-        code = "armed_robbery" if "pistola" in text else payload["incident_type_code"]
-        return {
-            "model": "fake",
-            "suggested_type_code": code,
-            "confidence": 0.9,
-            "zone_risk": 0.5,
-            "top_predictions": [{"code": code, "probability": 0.9}],
-        }, 5
-    if path.endswith("heatmap"):
-        return {"model": "fake", "cells": [], "hotspots": [], "neighborhood_risk": [], "insights": []}, 5
-    if path.endswith("summary"):
-        return {"model": "fake", "summary": f"Resumen de {payload['neighborhood_name']}"}, 5
-    if path.endswith("interpret-report"):
-        hood = next((p["id"] for p in payload["neighborhoods"] if p["name"].lower() in payload["text"].lower()), None)
-        return {
-            "model": "fake",
-            "incident_type_code": "armed_robbery" if "pistola" in payload["text"] else "theft",
-            "title": "Robo en la avenida",
-            "description": payload["text"],
-            "place": "Avenida Santander",
-            "neighborhood_id": hood,
-        }, 5
-    if path.endswith("interpret-route"):
-        names = {p["name"].lower(): p["id"] for p in payload["neighborhoods"]}
-        found = [names[n] for n in names if n in payload["text"].lower()]
-        return {"model": "fake", "origin_id": None, "destination_id": found[-1] if found else None}, 5
-    return None, 5
 
 
 @pytest.fixture(scope="session")
@@ -61,11 +25,6 @@ def client():
     models.catalog.clear()
     with TestClient(app) as c:
         yield c
-
-
-@pytest.fixture
-def ai_up(monkeypatch):
-    monkeypatch.setattr(ai_client, "_post", fake_ai_post)
 
 
 def login(client, email: str) -> dict:

@@ -110,12 +110,11 @@ class PendingNotification:
     queued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-def compute_priority(severity: int, zone_risk: Optional[float], has_photo: bool) -> float:
+def compute_priority(severity: int, has_photo: bool) -> float:
     """Prioridad del reporte en la cola de moderacion.
-    La gravedad pesa mas; el riesgo que calcula la IA para esa zona/hora
-    sube la prioridad; tener foto da un pequeno bono (mas confiable)."""
+    La gravedad del tipo de incidente pesa mas; tener foto da un pequeno
+    bono porque el reporte es mas confiable."""
     score = severity * 20.0
-    score += (zone_risk or 0.0) * 20.0
     if has_photo:
         score += 5.0
     return round(score, 2)

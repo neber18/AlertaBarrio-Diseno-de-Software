@@ -42,7 +42,6 @@ class "reports" as R <<document>> {
   latitude, longitude : double
   status : String
   priority_score : double
-  ai_suggested_type_id, ai_confidence, ai_zone_risk
   photos : Photo[]
   history : StatusChange[]
   verifications : Verification[]
@@ -75,21 +74,6 @@ class "notifications" as NO <<document>> {
   message : String
   is_read : bool
 }
-class "ai_analyses" as A <<document>> {
-  analysis_type, model_name : String
-  latency_ms : int
-  result : Object
-}
-class "daily_summaries" as D <<document>> {
-  neighborhood_id : int
-  summary_date : "AAAA-MM-DD"
-  summary_text : String
-}
-class "risk_hotspots" as Z <<document>> {
-  neighborhood_id : int
-  day_of_week, hour_block : int
-  risk_score : double
-}
 class "counters" as K <<document>> {
   _id : nombre de la coleccion
   seq : int
@@ -107,7 +91,4 @@ S ..> U
 S ..> N
 NO ..> U
 NO ..> R
-D ..> N
-Z ..> N
-A ..> R
 @enduml

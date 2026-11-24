@@ -69,6 +69,3 @@ def ensure_indexes(db: Database) -> None:
     db.subscriptions.create_index([("user_id", ASCENDING), ("neighborhood_id", ASCENDING)], unique=True)
     db.subscriptions.create_index("neighborhood_id")
     db.notifications.create_index([("user_id", ASCENDING), ("created_at", DESCENDING)])
-    db.daily_summaries.create_index([("neighborhood_id", ASCENDING), ("summary_date", ASCENDING)], unique=True)
-    db.risk_hotspots.create_index("neighborhood_id")
-    db.ai_analyses.create_index([("created_at", DESCENDING)])

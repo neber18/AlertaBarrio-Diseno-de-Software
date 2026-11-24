@@ -4,14 +4,13 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
-  "forwardPorts": [8000, 8001, 8081, 27017],
+  "forwardPorts": [8000, 8081, 27017],
   "portsAttributes": {
     "8000": { "label": "Backend (Swagger en /docs)" },
-    "8001": { "label": "IA" },
     "8081": { "label": "mongo-express" },
     "27017": { "label": "MongoDB" }
   },
-  "postCreateCommand": "cd backend && pip install -r requirements-dev.txt && cd ../ai && pip install -r requirements-dev.txt",
+  "postCreateCommand": "cd backend && pip install -r requirements-dev.txt",
   "customizations": {
     "vscode": {
       "extensions": [

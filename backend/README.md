@@ -5,7 +5,7 @@ API REST en **Python + FastAPI** sobre **MongoDB** (PyMongo). Aquí viven las es
 Ciudad: **San Juan de Pasto** (338 barrios de las 12 comunas, con sus vías para la ruta segura).
 
 - `GET /api/v1/hello` → hola mundo + integrantes
-- `GET /api/v1/stats` → números del dashboard
+- `GET /api/v1/stats` → indicadores generales
 - Swagger: `/docs`
 
 ## Estructura
@@ -14,9 +14,9 @@ Ciudad: **San Juan de Pasto** (338 barrios de las 12 comunas, con sus vías para
 app/
   structures/     dynamic_array, linked_list, stack, queue, priority_queue,
                   hash_table, bst (AVL), graph (BFS/DFS/Dijkstra), sorting
-  services/       engine.py (todas las estructuras), report_service.py, ai_client.py
-  routers/        auth, reports, moderation, notifications, routes, ai, catalog, general
-  models.py       documentos de MongoDB (9 colecciones, datos embebidos)
+  services/       engine.py (todas las estructuras), report_service.py, geo.py
+  routers/        auth, reports, moderation, notifications, routes, catalog, general
+  models.py       documentos de MongoDB (6 colecciones, datos embebidos)
   database.py     conexion (MONGODB_URI), ids enteros con 'counters' e indices
   seed.py         datos de ejemplo
 database/         modelo de documentos y ejemplos JSON
@@ -29,7 +29,7 @@ tests/            test_structures.py, test_api.py
 |---|---|---|
 | POST | `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/change-password` | — (bcrypt + JWT) |
 | POST | `/api/v1/auth/2fa/setup`, `/api/v1/auth/2fa/enable`, `/api/v1/auth/2fa/disable`, `/api/v1/auth/logout-all` | — (verificación en dos pasos TOTP y cierre de todas las sesiones) |
-| POST | `/api/v1/reports` | ciclo completo con IA → PriorityQueue + AVL + Stack |
+| POST | `/api/v1/reports` | ciclo completo: guardar → prioridad → PriorityQueue + AVL + Stack |
 | GET | `/api/v1/feed?neighborhood_id=` | LinkedList / merge sort |
 | GET | `/api/v1/reports?from=&to=` | AVL (rango por fecha) |
 | GET | `/api/v1/reports/{id}/history` | Stack |
@@ -41,10 +41,6 @@ tests/            test_structures.py, test_api.py
 | GET | `/api/v1/routes/safe?from_id=&to_id=` | Graph + Dijkstra + BFS |
 | GET | `/api/v1/neighborhoods/search?name=` | búsqueda binaria |
 | GET | `/api/v1/neighborhoods/ranking` | quick sort |
-| GET | `/api/v1/ai/heatmap`, `/api/v1/ai/daily-summary` | llaman al componente de IA |
-| POST | `/api/v1/ai/chat` | asistente: pregunta del vecino + datos reales (ranking, horas de riesgo, alertas recientes) → IA (Gemini) |
-| POST | `/api/v1/ai/report-draft` | Vigía: el vecino cuenta lo que pasó (voz o texto) y la IA arma el reporte; el barrio sale del GPS |
-| POST | `/api/v1/ai/route` | Vigía: "estoy en la U, necesito ir al centro" → Graph + Dijkstra desde la ubicación del vecino |
 | GET | `/api/v1/neighborhoods/nearest?lat=&lng=` | barrio al que pertenece un punto del mapa (haversine) |
 | GET | `/api/v1/ds/state` | estado interno de todas las estructuras |
 
@@ -74,11 +70,11 @@ Nada sensible queda en el código: todo se lee de variables de entorno (archivo 
 
 ## Modelo de datos en MongoDB
 
-9 colecciones: `users`, `neighborhoods`, `incident_types`, `reports`, `subscriptions`, `notifications`, `ai_analyses`, `daily_summaries`, `risk_hotspots` (+ `counters` para los ids).
+6 colecciones: `users`, `neighborhoods`, `incident_types`, `reports`, `subscriptions`, `notifications` (+ `counters` para los ids).
 
 - **Composición → embebido:** fotos, historial de estados y confirmaciones van dentro del reporte; las vías van dentro del barrio.
 - **Asociación → referencia:** el reporte guarda `user_id`, `neighborhood_id` e `incident_type_id` (+ copia de `reporter_name`).
-- **Ids enteros** con la colección `counters`, para que el frontend y las estructuras no cambien.
+- **Ids enteros** con la colección `counters`, para que las URLs y las estructuras no cambien.
 
 Detalle, diagrama y ejemplos JSON en [`database/README.md`](database/README.md).
 

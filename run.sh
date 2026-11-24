@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Levanta AlertaBarrio en local: MongoDB + IA + backend.
+# Levanta AlertaBarrio en local: MongoDB + backend.
 # Uso: ./run.sh      (Ctrl+C para detener todo)
 set -e
 
@@ -8,13 +8,13 @@ LOGS="$PROJECT_DIR/.logs"
 mkdir -p "$LOGS"
 
 # ── 1. Liberar puertos ────────────────────────────────────────────────────────
-echo "[1/4] Liberando puertos 8000 y 8001..."
-for port in 8000 8001; do
+echo "[1/3] Liberando el puerto 8000..."
+for port in 8000; do
   (lsof -ti:"$port" | xargs kill -9) 2>/dev/null || true
 done
 
 # ── 2. MongoDB: usa el de la maquina si ya hay uno en :27017; si no, Docker ───
-echo "[2/4] Preparando MongoDB..."
+echo "[2/3] Preparando MongoDB..."
 if (ss -tln 2>/dev/null || netstat -tln 2>/dev/null) | grep -q ':27017'; then
   echo "       Ya hay un MongoDB en :27017, se usa ese."
 else
@@ -37,16 +37,11 @@ setup_python() {
   [ -f .env ] || cp .env.example .env
 }
 
-# ── 3. Componente de IA (8001) ────────────────────────────────────────────────
-echo "[3/4] Iniciando el componente de IA..."
-setup_python ai
-.venv/bin/uvicorn app.main:app --port 8001 > "$LOGS/ai.log" 2>&1 &
-PIDS="$!"
-
-# ── 4. Backend (8000) ─────────────────────────────────────────────────────────
-echo "[4/4] Iniciando el backend..."
+# ── 3. Backend (8000) ─────────────────────────────────────────────────────────
+echo "[3/3] Iniciando el backend..."
 setup_python backend
-AI_SERVICE_URL=http://localhost:8001 .venv/bin/uvicorn app.main:app --port 8000 > "$LOGS/backend.log" 2>&1 &
+PIDS=""
+.venv/bin/uvicorn app.main:app --port 8000 > "$LOGS/backend.log" 2>&1 &
 BACKEND_PID=$!
 PIDS="$PIDS $BACKEND_PID"
 until curl -sf http://localhost:8000/health >/dev/null 2>&1; do
@@ -64,7 +59,6 @@ echo ""
 echo "=============================================="
 echo "  AlertaBarrio esta corriendo"
 echo "  Backend:   http://localhost:8000/docs"
-echo "  IA:        http://localhost:8001/docs"
 echo "  Logs:      $LOGS"
 echo "  Cuenta:    ana@alertabarrio.co / Alerta2026*"
 echo "=============================================="

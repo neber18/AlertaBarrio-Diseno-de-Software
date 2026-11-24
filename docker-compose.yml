@@ -31,16 +31,6 @@ services:
     profiles:
       - tools
 
-  # === Componente de IA ===
-  ai:
-    build: ./ai
-    container_name: alertabarrio-ai
-    ports:
-      - "8001:8001"
-    env_file:
-      - path: ./ai/.env
-        required: false
-
   # === Backend (API REST) ===
   backend:
     build: ./backend
@@ -52,13 +42,9 @@ services:
         required: false
     environment:
       MONGODB_URI: mongodb://mongodb:27017/alertabarrio
-      AI_SERVICE_URL: http://ai:8001
-      AI_WAKE_SECONDS: "0"
     depends_on:
       mongodb:
         condition: service_healthy
-      ai:
-        condition: service_started
 
 
 volumes:

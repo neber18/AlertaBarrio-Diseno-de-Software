@@ -3,7 +3,7 @@ Reportes de seguridad.
 
 Los routers son los CONTROLADORES (GRASP): reciben la peticion, delegan en
 services/report_service.py y arman la respuesta. El ciclo completo de un reporte
-(guardar -> IA -> prioridad -> cola de moderacion) esta en report_service.create_report().
+(guardar -> prioridad -> cola de moderacion) esta en report_service.create_report().
 """
 
 from datetime import datetime, timedelta, timezone
@@ -34,26 +34,10 @@ def create_report(
     created = report_service.create_report(db, user, data)
     return schemas.ReportCreatedOut(
         report=report_out(created.report, 0),
-        ai=_ai_out(created),
         queue_position=created.queue_position,
         queue_size=len(engine.moderation_queue),
     )
 
-
-def _ai_out(created: report_service.CreatedReport) -> schemas.AIResultOut:
-    """Arma la parte de la respuesta con lo que dijo la IA."""
-    if created.ai is None:
-        return schemas.AIResultOut(available=False)
-    suggested = created.suggested_type
-    return schemas.AIResultOut(
-        available=True,
-        model=created.ai.get("model"),
-        suggested_type=schemas.IncidentTypeOut.model_validate(suggested) if suggested else None,
-        confidence=created.report.ai_confidence,
-        zone_risk=created.report.ai_zone_risk,
-        matches_user_choice=(suggested.id == created.report.incident_type_id) if suggested else None,
-        top_predictions=created.ai.get("top_predictions", []),
-    )
 
 
 @router.get("/reports", response_model=List[schemas.ReportOut])

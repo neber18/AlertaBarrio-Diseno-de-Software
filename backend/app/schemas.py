@@ -1,6 +1,6 @@
 """Esquemas Pydantic: lo que entra y sale de la API."""
 
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -123,16 +123,6 @@ class StatusEntryOut(BaseModel):
     changed_at: datetime
 
 
-class AIResultOut(BaseModel):
-    available: bool
-    model: Optional[str] = None
-    suggested_type: Optional[IncidentTypeOut] = None
-    confidence: Optional[float] = None
-    zone_risk: Optional[float] = None
-    matches_user_choice: Optional[bool] = None
-    top_predictions: List[Dict[str, Any]] = []
-
-
 class ReportOut(BaseModel):
     id: int
     title: str
@@ -148,15 +138,11 @@ class ReportOut(BaseModel):
     incident_type: IncidentTypeOut
     reporter_name: str
     photos: List[str] = []
-    ai_suggested_type: Optional[IncidentTypeOut] = None
-    ai_confidence: Optional[float] = None
-    ai_zone_risk: Optional[float] = None
     confirmations: Optional[int] = None
 
 
 class ReportCreatedOut(BaseModel):
     report: ReportOut
-    ai: AIResultOut
     queue_position: int
     queue_size: int
 
@@ -191,41 +177,6 @@ class SubscriptionOut(BaseModel):
     created_at: datetime
 
 
-# -------------------------------------------------------------------- IA
-class HotspotOut(BaseModel):
-    neighborhood_id: int
-    neighborhood_name: str
-    day_of_week: int
-    hour_block: int
-    risk_score: float
-
-
-class HeatCellOut(BaseModel):
-    latitude: float
-    longitude: float
-    intensity: float
-
-
-class HeatmapOut(BaseModel):
-    available: bool
-    model: str
-    reports_analyzed: int
-    cells: List[HeatCellOut]
-    hotspots: List[HotspotOut]
-    neighborhood_risk: List[Dict[str, Any]]
-    insights: List[str]
-
-
-class SummaryOut(BaseModel):
-    available: bool
-    neighborhood: NeighborhoodOut
-    summary_date: date
-    reports_count: int
-    summary_text: str
-    model: str
-    cached: bool = False
-
-
 # ----------------------------------------------------------------- rutas
 class RouteOut(BaseModel):
     from_neighborhood: NeighborhoodOut
@@ -238,50 +189,3 @@ class RouteOut(BaseModel):
     avoided: List[Dict[str, Any]]
     explanation: str
 
-
-# ------------------------------------------------------------- asistente IA
-class ChatTurn(BaseModel):
-    role: Literal["user", "assistant"]
-    text: str = Field(max_length=1500)
-
-
-class ChatIn(BaseModel):
-    question: str = Field(min_length=2, max_length=500)
-    neighborhood_id: Optional[int] = None
-    history: List[ChatTurn] = Field(default=[], max_length=12)
-
-
-class ChatOut(BaseModel):
-    available: bool
-    answer: str
-    model: str
-
-
-# ------------------------------------------------- Vigia: reportes y rutas por voz
-class VoiceIn(BaseModel):
-    text: str = Field(min_length=3, max_length=1000)
-    latitude: Optional[float] = Field(default=None, ge=-90, le=90)
-    longitude: Optional[float] = Field(default=None, ge=-180, le=180)
-
-
-class ReportDraftOut(BaseModel):
-    available: bool
-    model: str
-    message: str = ""
-    incident_type: Optional[IncidentTypeOut] = None
-    neighborhood: Optional[NeighborhoodOut] = None
-    title: str = ""
-    description: str = ""
-    place: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    # de donde salio la ubicacion: "gps", "texto" o "perfil"
-    location_source: Optional[str] = None
-
-
-class VoiceRouteOut(BaseModel):
-    available: bool
-    model: str
-    message: str
-    origin_source: Optional[str] = None
-    route: Optional[RouteOut] = None

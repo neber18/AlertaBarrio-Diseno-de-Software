@@ -2,7 +2,7 @@
 Datos de ejemplo para que el sistema arranque con informacion realista:
 barrios de Pasto, sus conexiones (grafo), tipos de incidente, usuarios de
 prueba y ~3 meses de reportes historicos con PATRONES (por ejemplo, robos
-en el Centro los jueves y viernes en la noche) para que la IA los detecte.
+en el Centro los jueves y viernes en la noche) para que el ranking y las consultas por fecha muestren datos reales.
 
 Se ejecuta solo si la base de datos esta vacia (coleccion "users" sin documentos).
 Uso manual:  python -m app.seed
@@ -118,7 +118,7 @@ TEXTS = {
     ],
 }
 
-# (barrio, tipos, dias_semana, franjas_horarias, peso) -> patrones que la IA debe encontrar
+# (barrio, tipos, dias_semana, franjas_horarias, peso) -> patrones de ejemplo en los datos
 PATTERNS = [
     ("Centro", ["armed_robbery", "theft"], [3, 4], [19, 20, 21, 22, 23], 40),  # jueves/viernes noche
     ("Lorenzo de Aldana", ["theft", "assault"], [5, 6], [13, 14, 15, 16, 17], 14),  # fin de semana tarde

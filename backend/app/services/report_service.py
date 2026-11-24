@@ -11,7 +11,6 @@ from pymongo.database import Database
 from .. import models
 from ..config import get_settings
 from ..database import next_id
-from . import ai_client
 from .engine import ReportItem, compute_priority, ensure_aware, engine
 
 # Transiciones permitidas (maquina de estados del reporte)
@@ -113,34 +112,10 @@ def dispatch_notifications(db: Database) -> int:
 # ===================================================================== crear reporte
 @dataclass
 class CreatedReport:
-    """Resultado de crear un reporte: el documento, lo que dijo la IA y su puesto en la cola."""
+    """Resultado de crear un reporte: el documento y su puesto en la cola de moderacion."""
 
     report: models.Report
-    ai: Optional[dict]
-    suggested_type: Optional[models.IncidentType]
     queue_position: int
-
-
-def _history_for_ai(db: Database, neighborhood_id: int, exclude_id: int) -> list:
-    """Reportes del barrio en los ultimos 6 meses, para que la IA calcule el riesgo de la zona."""
-    since = datetime.now(timezone.utc) - timedelta(days=180)
-    rows = models.Report.find_light(
-        db,
-        {
-            "neighborhood_id": neighborhood_id,
-            "occurred_at": {"$gte": since},
-            "status": {"$ne": "rejected"},
-            "_id": {"$ne": exclude_id},
-        },
-    )
-    return [
-        {
-            "occurred_at": to_local(r.occurred_at).isoformat(),
-            "severity": r.incident_type.severity_level,
-            "incident_type_code": r.incident_type.code,
-        }
-        for r in rows
-    ]
 
 
 def create_report(db: Database, user: models.User, data) -> CreatedReport:
@@ -148,8 +123,7 @@ def create_report(db: Database, user: models.User, data) -> CreatedReport:
 
     1) valida tipo, barrio y fecha
     2) guarda en MongoDB con estado "created" (fotos e historial EMBEBIDOS)
-    3) lo manda al componente de IA y guarda lo que responde
-    4) calcula la prioridad y lo mete a la COLA DE PRIORIDAD de moderacion
+    3) calcula la prioridad (gravedad + foto) y lo mete a la COLA DE PRIORIDAD de moderacion
     """
     incident_type = models.IncidentType.get(db, data.incident_type_id)
     neighborhood = models.Neighborhood.get(db, data.neighborhood_id)
@@ -181,34 +155,11 @@ def create_report(db: Database, user: models.User, data) -> CreatedReport:
         address=(data.address or "").strip() or None,
         occurred_at=occurred_at,
         status="created",
-        priority_score=compute_priority(incident_type.severity_level, None, has_photo),
+        priority_score=compute_priority(incident_type.severity_level, has_photo),
         photos=[models.ReportPhoto(url=data.photo_url)] if has_photo else [],
         history=[first],
     )
     report.insert(db)
 
-    ai_payload = {
-        "description": f"{report.title}. {report.description}",
-        "incident_type_code": incident_type.code,
-        "occurred_at": to_local(occurred_at).isoformat(),
-        "neighborhood_id": neighborhood.id,
-        "history": _history_for_ai(db, neighborhood.id, report.id),
-    }
-    ai = ai_client.analyze_report(db, ai_payload, report.id, neighborhood.id)
-
-    suggested = None
-    if ai is not None:
-        suggested = models.IncidentType.find_one(db, {"code": ai.get("suggested_type_code")})
-        report.ai_suggested_type_id = suggested.id if suggested else None
-        report.ai_confidence = ai.get("confidence")
-        report.ai_zone_risk = ai.get("zone_risk")
-        # Si la IA esta muy segura de que es algo MAS grave, se usa esa gravedad
-        # (ej: el vecino marco "hurto" pero describio un robo con pistola)
-        severity = incident_type.severity_level
-        if suggested and (report.ai_confidence or 0) >= 0.7:
-            severity = max(severity, suggested.severity_level)
-        report.priority_score = compute_priority(severity, report.ai_zone_risk, has_photo)
-        report.save(db)
-
     position = engine.add_report(ReportItem.from_model(report), first)
-    return CreatedReport(report=report, ai=ai, suggested_type=suggested, queue_position=position)
+    return CreatedReport(report=report, queue_position=position)

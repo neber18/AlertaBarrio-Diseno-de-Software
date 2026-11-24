@@ -15,7 +15,7 @@ Reglas que usamos para pasar las 14 tablas de PostgreSQL a documentos
 
 Colecciones:
     users, neighborhoods, incident_types, reports, subscriptions,
-    notifications, ai_analyses, daily_summaries, risk_hotspots, counters
+    notifications, counters
 
 Cada clase es un "documento": from_doc() lo lee de Mongo y to_doc() lo
 convierte para guardarlo. A diferencia de SQLAlchemy, en Mongo NO hay
@@ -25,7 +25,7 @@ guardado automatico: despues de cambiar un objeto hay que llamar save().
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Type, TypeVar
 
 from pymongo.database import Database
@@ -279,10 +279,6 @@ class Report(Document):
     occurred_at: datetime = field(default_factory=utcnow)
     status: str = "created"
     priority_score: float = 0.0
-    # Lo que devolvio el componente de IA al analizar el reporte
-    ai_suggested_type_id: Optional[int] = None
-    ai_confidence: Optional[float] = None
-    ai_zone_risk: Optional[float] = None
     created_at: datetime = field(default_factory=utcnow)
     updated_at: datetime = field(default_factory=utcnow)
     # ---- embebidos (composicion)
@@ -308,16 +304,12 @@ class Report(Document):
         return catalog.incident_type(self.incident_type_id)
 
     @property
-    def ai_suggested_type(self) -> Optional[IncidentType]:
-        return catalog.incident_type(self.ai_suggested_type_id)
-
-    @property
     def confirmations(self) -> int:
         return sum(1 for v in self.verifications if v.is_confirmed)
 
     @classmethod
     def find_light(cls, db: Database, query: Optional[dict] = None, sort: Optional[list] = None) -> List["Report"]:
-        """Reportes sin los embebidos (fotos, historial, confirmaciones): para estadisticas e IA."""
+        """Reportes sin los embebidos (fotos, historial, confirmaciones): para estadisticas."""
         cursor = db[cls.collection].find(query or {}, {"photos": 0, "history": 0, "verifications": 0})
         if sort:
             cursor = cursor.sort(sort)
@@ -351,44 +343,3 @@ class Notification(Document):
     is_read: bool = False
     created_at: datetime = field(default_factory=utcnow)
 
-
-@dataclass
-class AIAnalysis(Document):
-    """Bitacora de cada llamada al componente de IA (modelo usado, tiempo, resultado)."""
-
-    collection: ClassVar[str] = "ai_analyses"
-    analysis_type: str = ""  # report, heatmap, summary, chat...
-    report_id: Optional[int] = None
-    neighborhood_id: Optional[int] = None
-    model_name: str = ""
-    latency_ms: Optional[int] = None
-    result: Optional[dict] = None
-    created_at: datetime = field(default_factory=utcnow)
-
-
-@dataclass
-class DailySummary(Document):
-    collection: ClassVar[str] = "daily_summaries"
-    neighborhood_id: int = 0
-    summary_date: str = ""  # "AAAA-MM-DD" (Mongo no tiene tipo fecha sin hora)
-    summary_text: str = ""
-    reports_count: int = 0
-    model_name: str = ""
-    created_at: datetime = field(default_factory=utcnow)
-
-    @staticmethod
-    def key(day: date) -> str:
-        return day.isoformat()
-
-
-@dataclass
-class RiskHotspot(Document):
-    """Resultado del mapa de calor predictivo: riesgo por barrio, dia y franja horaria."""
-
-    collection: ClassVar[str] = "risk_hotspots"
-    neighborhood_id: int = 0
-    day_of_week: int = 0  # 0 = lunes
-    hour_block: int = 0  # 0:00-6, 1:6-12, 2:12-18, 3:18-24
-    risk_score: float = 0.0  # 0..1
-    model_name: str = ""
-    generated_at: datetime = field(default_factory=utcnow)

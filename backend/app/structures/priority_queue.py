@@ -90,7 +90,7 @@ class PriorityQueue(Generic[T]):
     def push(self, value: T) -> None:
         item_id = self._id_of(value)
         if item_id in self._positions:
-            # Si ya estaba, lo actualizamos (por ejemplo si la IA cambio su prioridad)
+            # Si ya estaba, lo actualizamos (por ejemplo si cambio su prioridad)
             self.remove(item_id)
         entry = (float(self._priority_of(value)), self._counter, item_id, value)
         self._counter += 1

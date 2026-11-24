@@ -6,7 +6,7 @@
 
 ## Cómo pasamos el modelo relacional a documentos
 
-Las 14 tablas que teníamos en PostgreSQL se convirtieron en **9 colecciones** (+ `counters`). La regla sale del diagrama de clases:
+Las 14 tablas que teníamos en PostgreSQL se convirtieron en **6 colecciones** (+ `counters`). Las tablas de IA (`ai_analyses`, `daily_summaries`, `risk_hotspots`) se quitaron cuando se retiró el componente de IA. La regla sale del diagrama de clases:
 
 | Relación en el diagrama | Cómo se guarda en MongoDB | Ejemplo en AlertaBarrio |
 |-------------------------|---------------------------|-------------------------|
@@ -24,14 +24,11 @@ Las 14 tablas que teníamos en PostgreSQL se convirtieron en **9 colecciones** (
 | `reports` | `Report` | El reporte **con fotos, historial de estados y confirmaciones embebidos** | `reports` + `report_photos` + `report_status_history` + `report_verifications` |
 | `subscriptions` | `Subscription` | Vecino ↔ barrio que sigue | `subscriptions` |
 | `notifications` | `Notification` | Notificaciones entregadas (salen de la cola FIFO) | `notifications` |
-| `ai_analyses` | `AIAnalysis` | Bitácora de cada llamada a la IA: modelo, latencia, resultado | `ai_analyses` |
-| `daily_summaries` | `DailySummary` | Resumen diario por barrio | `daily_summaries` |
-| `risk_hotspots` | `RiskHotspot` | Riesgo por barrio, día y franja horaria (mapa de calor) | `risk_hotspots` |
 | `counters` | — | Último id usado por colección (ids enteros) | secuencias `SERIAL` |
 
 ## Decisiones
 
-- **Ids enteros, no ObjectId.** Mongo genera ids largos (`6730f1c2a9e4...`), pero el frontend, las estructuras de datos (tabla hash, AVL, grafo) y las URLs usan números. Por eso cada colección tiene un contador en `counters` que se incrementa de forma atómica con `$inc` (`app/database.py: next_id`). Así el frontend no cambió nada.
+- **Ids enteros, no ObjectId.** Mongo genera ids largos (`6730f1c2a9e4...`), pero las estructuras de datos (tabla hash, AVL, grafo) y las URLs usan números. Por eso cada colección tiene un contador en `counters` que se incrementa de forma atómica con `$inc` (`app/database.py: next_id`). Así las URLs de la API no cambiaron.
 - **Índices** (`app/database.py: ensure_indexes`): `users.email` y `neighborhoods.name` únicos, `(user_id, neighborhood_id)` único en `subscriptions`, y `status`, `neighborhood_id`, `created_at` en `reports`.
 - **Sin guardado automático.** En SQLAlchemy cambiar un objeto y hacer `commit()` lo guardaba. En Mongo hay que llamar `save()` o hacer un `update_one`.
 - **Cambios atómicos en el reporte.** Un cambio de estado hace un solo `update_one` con `$set` (estado) + `$push` (historial). Confirmar una alerta hace `$push` solo si el vecino no está ya en `verifications`, así nadie confirma dos veces.

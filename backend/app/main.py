@@ -14,9 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .database import get_database
-from .routers import ai, auth, catalog, general, moderation, notifications, reports, routes
+from .routers import auth, catalog, general, moderation, notifications, reports, routes
 from .seed import init_db
-from .services import ai_client
 from .services.engine import engine
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -29,8 +28,6 @@ async def lifespan(_: FastAPI):
         logging.getLogger("alertabarrio").warning(
             "JWT_SECRET tiene el valor por defecto: configura uno largo y secreto en produccion"
         )
-    if settings.ai_wake_seconds > 0:
-        ai_client.wake_up()  # la IA (plan gratuito) empieza a despertar junto con el backend
     init_db(with_seed=settings.seed_on_startup)
     engine.load(get_database())  # cargamos las estructuras de datos desde MongoDB
     logging.getLogger("alertabarrio").info(
@@ -44,7 +41,7 @@ async def lifespan(_: FastAPI):
 settings = get_settings()
 app = FastAPI(
     title=settings.app_name,
-    description="Reportes de seguridad ciudadana con estructuras de datos propias e IA.",
+    description="Reportes de seguridad ciudadana con estructuras de datos propias.",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -69,7 +66,7 @@ async def security_headers(request: Request, call_next):
     return response
 
 
-for r in (general, auth, catalog, reports, moderation, notifications, routes, ai):
+for r in (general, auth, catalog, reports, moderation, notifications, routes):
     app.include_router(r.router)
 
 

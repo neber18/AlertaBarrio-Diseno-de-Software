@@ -1,4 +1,4 @@
-# Blueprint de Render: backend e IA. La base de datos NO va aqui: esta en MongoDB Atlas.
+# Blueprint de Render: backend. La base de datos NO va aqui: esta en MongoDB Atlas.
 # MONGODB_URI se pone a mano en el panel de Render (sync: false). Nunca subirla al repositorio.
 services:
   - type: web
@@ -12,8 +12,6 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-      - key: AI_SERVICE_URL
-        value: https://alertabarrio-ai.onrender.com
       - key: CORS_ORIGINS
         value: http://localhost:8000
       - key: SEED_ON_STARTUP
@@ -23,12 +21,3 @@ services:
       - key: PROFESOR_PASSWORD
         sync: false
 
-  - type: web
-    name: alertabarrio-ai
-    runtime: docker
-    rootDir: ai
-    plan: free
-    healthCheckPath: /health
-    envVars:
-      - key: GEMINI_API_KEY
-        sync: false

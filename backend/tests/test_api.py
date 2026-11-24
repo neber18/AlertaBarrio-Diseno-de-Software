@@ -37,33 +37,36 @@ def test_requires_auth(client):
     assert client.get("/api/v1/moderation/queue", headers=citizen).status_code == 403
 
 
-def _new_report(client, headers, title="Me robaron con pistola", type_id=5, hood=1):
-    return client.post(
-        "/api/v1/reports",
-        headers=headers,
-        json={
-            "title": title,
-            "description": "Un hombre con pistola me quito el celular frente a la tienda",
-            "incident_type_id": type_id,
-            "neighborhood_id": hood,
-            "latitude": 1.2136,
-            "longitude": -77.2811,
-        },
-    )
+def _type_id(client, code: str) -> int:
+    return next(t["id"] for t in client.get("/api/v1/incident-types").json() if t["code"] == code)
 
 
-def test_full_cycle_with_priority_queue_and_stack(client, ai_up):
+def _new_report(client, headers, title="Me robaron con pistola", code="armed_robbery", hood=1, photo=True):
+    body = {
+        "title": title,
+        "description": "Un hombre con pistola me quito el celular frente a la tienda",
+        "incident_type_id": _type_id(client, code),
+        "neighborhood_id": hood,
+        "latitude": 1.2136,
+        "longitude": -77.2811,
+    }
+    if photo:
+        body["photo_url"] = "https://example.com/foto.jpg"
+    return client.post("/api/v1/reports", headers=headers, json=body)
+
+
+def test_full_cycle_with_priority_queue_and_stack(client):
     ana = login(client, "ana@alertabarrio.co")
     mod = login(client, "moderador@alertabarrio.co")
 
-    # 1) El vecino crea el reporte -> IA -> cola de prioridad
+    # 1) El vecino crea el reporte -> cola de prioridad
     r = _new_report(client, ana)
     assert r.status_code == 201, r.text
     data = r.json()
     rid = data["report"]["id"]
-    assert data["ai"]["available"] and data["ai"]["suggested_type"]["code"] == "armed_robbery"
-    # la IA detecto algo mas grave que "hurto" -> prioridad de robo armado (5*20 + 0.5*20)
-    assert data["report"]["priority_score"] == 110.0
+    assert "ai" not in data
+    # robo armado (gravedad 5) con foto: 5*20 + 5 = 105
+    assert data["report"]["priority_score"] == 105.0
     assert data["queue_position"] == 1  # es el mas grave de la cola
 
     queue = client.get("/api/v1/moderation/queue", headers=mod).json()
@@ -100,7 +103,7 @@ def test_full_cycle_with_priority_queue_and_stack(client, ai_up):
     assert client.post(f"/api/v1/moderation/reports/{rid}/undo", headers=mod).status_code == 409
 
 
-def test_verification_by_neighbors(client, ai_up):
+def test_verification_by_neighbors(client):
     ana = login(client, "ana@alertabarrio.co")
     mod = login(client, "moderador@alertabarrio.co")
     rid = _new_report(client, ana, title="Robo para verificar").json()["report"]["id"]
@@ -112,7 +115,7 @@ def test_verification_by_neighbors(client, ai_up):
     assert r2.json()["status"] == "verified" and r2.json()["confirmations"] == 2
 
 
-def test_reject_invalid_transition(client, ai_up):
+def test_reject_invalid_transition(client):
     ana = login(client, "ana@alertabarrio.co")
     mod = login(client, "moderador@alertabarrio.co")
     rid = _new_report(client, ana, title="Reporte falso").json()["report"]["id"]
@@ -136,19 +139,6 @@ def test_safe_route_and_search(client):
     assert client.get("/api/v1/neighborhoods/search", params={"name": "palermo"}).json()["name"] == "Palermo"
 
 
-def test_ai_endpoints(client, ai_up):
-    assert client.get("/api/v1/ai/heatmap").json()["available"] is True
-    s = client.get("/api/v1/ai/daily-summary", params={"neighborhood_id": 1}).json()
-    assert s["summary_text"].startswith("Resumen de Centro")
-    assert client.get("/api/v1/ai/daily-summary", params={"neighborhood_id": 1}).json()["cached"] is True
-
-
-def test_ai_down_does_not_break(client):
-    # sin el mock la IA no responde: el backend sigue funcionando
-    assert client.get("/api/v1/ai/heatmap").json()["available"] is False
-    ana = login(client, "ana@alertabarrio.co")
-    r = _new_report(client, ana, title="Sin IA")
-    assert r.status_code == 201 and r.json()["ai"]["available"] is False
 
 
 def test_ds_state(client):
@@ -204,7 +194,7 @@ def test_city_is_pasto_and_stats(client):
     assert stats["active_alerts"] == stats["by_status"]["published"] + stats["by_status"]["verified"]
 
 
-def test_mongodb_document_model(client, ai_up):
+def test_mongodb_document_model(client):
     """Composicion -> embebido (fotos, historial, confirmaciones); asociacion -> referencia por id."""
     from app.database import get_database
 
@@ -246,44 +236,7 @@ def test_mongodb_document_model(client, ai_up):
     assert db.users.index_information()["email_1"].get("unique") is True
 
 
-def test_ai_status_reports_available_flag(monkeypatch):
-    from app.services import ai_client
 
-    class FakeResp:
-        def raise_for_status(self):
-            pass
-
-        def json(self):
-            return {"available": {"classifier": ["naive_bayes"]}, "classifier": "naive_bayes"}
-
-    monkeypatch.setattr(ai_client.httpx, "get", lambda *a, **k: FakeResp())
-    st = ai_client.status()
-    assert st["available"] is True and st["options"] == {"classifier": ["naive_bayes"]} and st["classifier"] == "naive_bayes"
-
-
-def test_ai_chat_sends_real_context(client, monkeypatch):
-    from app.services import ai_client
-
-    sent = {}
-
-    def fake_post(path, payload, wait_s=0):
-        sent.update(path=path, payload=payload)
-        return {"model": "gemini:gemini-2.5-flash", "answer": "Evita el Centro de noche."}, 5
-
-    monkeypatch.setattr(ai_client, "_post", fake_post)
-    ana = login(client, "ana@alertabarrio.co")
-    history = [{"role": "user", "text": "me robaron en Pandiaco"}, {"role": "assistant", "text": "Lo siento."}]
-    r = client.post("/api/v1/ai/chat", headers=ana, json={"question": "¿Es seguro mi barrio?", "history": history})
-    assert r.status_code == 200 and r.json() == {"available": True, "answer": "Evita el Centro de noche.", "model": "gemini:gemini-2.5-flash"}
-    ctx = sent["payload"]["context"]
-    assert sent["path"] == "/api/v1/chat" and ctx["city"] == "Pasto" and ctx["neighborhood"] == "Centro"
-    assert ctx["ranking"] and ctx["hotspots"] and ctx["recent"]
-    assert "Pandiaco" in ctx["neighborhoods"] and sent["payload"]["history"] == history
-
-
-def test_ai_chat_when_ai_is_down(client):
-    r = client.post("/api/v1/ai/chat", json={"question": "hola"})
-    assert r.status_code == 200 and r.json()["available"] is False
 
 
 def _new_user(client, email: str) -> dict:
@@ -339,29 +292,6 @@ def test_rate_limiter_and_security_headers(client):
     assert r.headers["X-Content-Type-Options"] == "nosniff" and r.headers["X-Frame-Options"] == "DENY"
 
 
-def test_ai_client_waits_while_ai_wakes_up(monkeypatch):
-    import httpx
-
-    from app.services import ai_client
-
-    calls = []
-
-    def fake_httpx_post(url, json, timeout):
-        calls.append(url)
-        code = 502 if len(calls) < 3 else 200
-        return httpx.Response(code, json={"answer": "ok", "model": "m"}, request=httpx.Request("POST", url))
-
-    monkeypatch.setattr(ai_client.httpx, "post", fake_httpx_post)
-    monkeypatch.setattr(ai_client.time, "sleep", lambda s: None)
-    monkeypatch.setattr(ai_client, "wake_up", lambda: None)
-
-    result, _ = ai_client._post("/api/v1/chat", {}, wait_s=30)
-    assert result == {"answer": "ok", "model": "m"} and len(calls) == 3
-
-    calls.clear()
-    result, _ = ai_client._post("/api/v1/heatmap", {})
-    assert result is None and len(calls) == 1
-
 
 def test_login_checks_account_type(client):
     def login_as(email, kind):
@@ -394,44 +324,11 @@ def test_nearest_neighborhood(client):
     assert r.status_code == 200 and r.json()["name"] == "Centro"
 
 
-def test_voice_report_draft_uses_gps(client, ai_up):
+
+
+def test_priority_without_photo_is_lower(client):
     ana = login(client, "ana@alertabarrio.co")
-    hoods = {h["name"]: h for h in client.get("/api/v1/neighborhoods").json()}
-    pandiaco = hoods["Pandiaco"]
-    r = client.post(
-        "/api/v1/ai/report-draft",
-        headers=ana,
-        json={"text": "me robaron con pistola en la avenida", "latitude": pandiaco["latitude"], "longitude": pandiaco["longitude"]},
-    )
-    body = r.json()
-    assert r.status_code == 200 and body["available"]
-    assert body["incident_type"]["code"] == "armed_robbery"
-    assert body["neighborhood"]["name"] == "Pandiaco" and body["location_source"] == "gps"
-    # sin GPS usa el barrio que nombro
-    body = client.post("/api/v1/ai/report-draft", headers=ana, json={"text": "raponazo en Torobajo"}).json()
-    assert body["neighborhood"]["name"] == "Torobajo" and body["location_source"] == "texto"
-    # si nombra otro barrio distinto al del GPS, gana el que nombro
-    body = client.post(
-        "/api/v1/ai/report-draft",
-        headers=ana,
-        json={"text": "raponazo en Torobajo", "latitude": pandiaco["latitude"], "longitude": pandiaco["longitude"]},
-    ).json()
-    assert body["neighborhood"]["name"] == "Torobajo" and body["latitude"] != pandiaco["latitude"]
-
-
-def test_voice_report_draft_without_ai(client):
-    ana = login(client, "ana@alertabarrio.co")
-    body = client.post("/api/v1/ai/report-draft", headers=ana, json={"text": "raponazo en Torobajo"}).json()
-    assert body["available"] is False
-
-
-def test_voice_route_from_gps(client, ai_up):
-    hoods = {h["name"]: h for h in client.get("/api/v1/neighborhoods").json()}
-    torobajo = hoods["Torobajo"]
-    body = client.post(
-        "/api/v1/ai/route",
-        json={"text": "necesito ruta segura hasta el Centro", "latitude": torobajo["latitude"], "longitude": torobajo["longitude"]},
-    ).json()
-    assert body["origin_source"] == "gps"
-    assert body["route"]["from_neighborhood"]["name"] == "Torobajo" and body["route"]["to_neighborhood"]["name"] == "Centro"
-    assert "Tu ruta segura" in body["message"]
+    r = _new_report(client, ana, title="Hurto sin foto", code="theft", photo=False)
+    assert r.status_code == 201, r.text
+    theft = next(t for t in client.get("/api/v1/incident-types").json() if t["code"] == "theft")
+    assert r.json()["report"]["priority_score"] == theft["severity_level"] * 20.0

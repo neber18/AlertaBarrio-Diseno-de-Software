@@ -38,9 +38,6 @@ def report_out(r: models.Report, confirmations: Optional[int] = None) -> schemas
         incident_type=schemas.IncidentTypeOut.model_validate(r.incident_type),
         reporter_name=r.reporter_name,
         photos=[p.url for p in r.photos],
-        ai_suggested_type=schemas.IncidentTypeOut.model_validate(r.ai_suggested_type) if r.ai_suggested_type else None,
-        ai_confidence=r.ai_confidence,
-        ai_zone_risk=r.ai_zone_risk,
         confirmations=confirmations,
     )
 
