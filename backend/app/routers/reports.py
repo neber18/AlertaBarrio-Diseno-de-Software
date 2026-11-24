@@ -1,10 +1,9 @@
 """
 Reportes de seguridad.
 
-Aqui esta el CICLO COMPLETO que pidio el profe:
-    Frontend -> Backend (POST /reports) -> guarda en BD -> llama a la IA
-    -> la IA clasifica y calcula el riesgo -> Backend guarda el resultado
-    en BD -> mete el reporte a la cola de prioridad -> responde al Frontend.
+Los routers son los CONTROLADORES (GRASP): reciben la peticion, delegan en
+services/report_service.py y arman la respuesta. El ciclo completo de un reporte
+(guardar -> IA -> prioridad -> cola de moderacion) esta en report_service.create_report().
 """
 
 from datetime import datetime, timedelta, timezone
@@ -15,35 +14,14 @@ from pymongo.database import Database
 
 from .. import models, schemas
 from ..config import get_settings
-from ..database import get_db, next_id
+from ..database import get_db
 from ..security import get_current_user
 from ..serializers import report_out, reports_in_order
-from ..services import ai_client
-from ..services.engine import ReportItem, compute_priority, engine
-from ..services.report_service import change_status, get_report_or_404, to_local
+from ..services import report_service
+from ..services.engine import engine
+from ..services.report_service import change_status, get_report_or_404
 
 router = APIRouter(prefix="/api/v1", tags=["reports"])
-
-
-def _history_for_ai(db: Database, neighborhood_id: int, exclude_id: int) -> list:
-    since = datetime.now(timezone.utc) - timedelta(days=180)
-    rows = models.Report.find_light(
-        db,
-        {
-            "neighborhood_id": neighborhood_id,
-            "occurred_at": {"$gte": since},
-            "status": {"$ne": "rejected"},
-            "_id": {"$ne": exclude_id},
-        },
-    )
-    return [
-        {
-            "occurred_at": to_local(r.occurred_at).isoformat(),
-            "severity": r.incident_type.severity_level,
-            "incident_type_code": r.incident_type.code,
-        }
-        for r in rows
-    ]
 
 
 @router.post("/reports", response_model=schemas.ReportCreatedOut, status_code=201)
@@ -52,81 +30,29 @@ def create_report(
     db: Database = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
-    incident_type = models.IncidentType.get(db, data.incident_type_id)
-    neighborhood = models.Neighborhood.get(db, data.neighborhood_id)
-    if incident_type is None or neighborhood is None:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tipo de incidente o barrio invalido")
-    occurred_at = data.occurred_at or datetime.now(timezone.utc)
-    if occurred_at.tzinfo is None:
-        occurred_at = occurred_at.replace(tzinfo=timezone.utc)
-    if occurred_at > datetime.now(timezone.utc) + timedelta(minutes=5):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La fecha del incidente no puede ser futura")
-
-    # 1) Guardar en MongoDB con estado inicial "created"
-    #    (fotos e historial van EMBEBIDOS dentro del mismo documento)
-    first = models.ReportStatusHistory(
-        id=next_id(db, "report_status_history"),
-        previous_status=None,
-        new_status="created",
-        changed_by=user.id,
-        note="Reporte creado",
-    )
-    report = models.Report(
-        user_id=user.id,
-        reporter_name=user.full_name,
-        neighborhood_id=neighborhood.id,
-        incident_type_id=incident_type.id,
-        title=data.title.strip(),
-        description=data.description.strip(),
-        latitude=data.latitude,
-        longitude=data.longitude,
-        address=(data.address or "").strip() or None,
-        occurred_at=occurred_at,
-        status="created",
-        priority_score=compute_priority(incident_type.severity_level, None, bool(data.photo_url)),
-        photos=[models.ReportPhoto(url=data.photo_url)] if data.photo_url else [],
-        history=[first],
-    )
-    report.insert(db)
-
-    # 2) Enviar al componente de IA
-    ai_payload = {
-        "description": f"{report.title}. {report.description}",
-        "incident_type_code": incident_type.code,
-        "occurred_at": to_local(occurred_at).isoformat(),
-        "neighborhood_id": neighborhood.id,
-        "history": _history_for_ai(db, neighborhood.id, report.id),
-    }
-    ai = ai_client.analyze_report(db, ai_payload, report.id, neighborhood.id)
-
-    # 3) Guardar lo que respondio la IA
-    ai_out = schemas.AIResultOut(available=ai is not None)
-    if ai is not None:
-        suggested = models.IncidentType.find_one(db, {"code": ai.get("suggested_type_code")})
-        report.ai_suggested_type_id = suggested.id if suggested else None
-        report.ai_confidence = ai.get("confidence")
-        report.ai_zone_risk = ai.get("zone_risk")
-        # Si la IA esta muy segura de que es algo MAS grave, se usa esa gravedad
-        # para la prioridad (ej: el vecino marco "hurto" pero describio un robo con pistola)
-        severity = incident_type.severity_level
-        if suggested and (report.ai_confidence or 0) >= 0.7:
-            severity = max(severity, suggested.severity_level)
-        report.priority_score = compute_priority(severity, report.ai_zone_risk, bool(data.photo_url))
-        ai_out = schemas.AIResultOut(
-            available=True,
-            model=ai.get("model"),
-            suggested_type=schemas.IncidentTypeOut.model_validate(suggested) if suggested else None,
-            confidence=report.ai_confidence,
-            zone_risk=report.ai_zone_risk,
-            matches_user_choice=(suggested.id == incident_type.id) if suggested else None,
-            top_predictions=ai.get("top_predictions", []),
-        )
-        report.save(db)  # 3b) en Mongo hay que guardar explicitamente
-
-    # 4) Meter el reporte a la COLA DE PRIORIDAD de moderacion
-    position = engine.add_report(ReportItem.from_model(report), first)
+    """Controlador del caso de uso "reportar": solo recibe, delega y responde."""
+    created = report_service.create_report(db, user, data)
     return schemas.ReportCreatedOut(
-        report=report_out(report, 0), ai=ai_out, queue_position=position, queue_size=len(engine.moderation_queue)
+        report=report_out(created.report, 0),
+        ai=_ai_out(created),
+        queue_position=created.queue_position,
+        queue_size=len(engine.moderation_queue),
+    )
+
+
+def _ai_out(created: report_service.CreatedReport) -> schemas.AIResultOut:
+    """Arma la parte de la respuesta con lo que dijo la IA."""
+    if created.ai is None:
+        return schemas.AIResultOut(available=False)
+    suggested = created.suggested_type
+    return schemas.AIResultOut(
+        available=True,
+        model=created.ai.get("model"),
+        suggested_type=schemas.IncidentTypeOut.model_validate(suggested) if suggested else None,
+        confidence=created.report.ai_confidence,
+        zone_risk=created.report.ai_zone_risk,
+        matches_user_choice=(suggested.id == created.report.incident_type_id) if suggested else None,
+        top_predictions=created.ai.get("top_predictions", []),
     )
 
 
