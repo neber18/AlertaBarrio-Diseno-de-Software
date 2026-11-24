@@ -128,10 +128,10 @@ Los clientes solo hablan con el backend por HTTP/JSON. Los controladores delegan
 
 | Nodo | Ambiente | Artefactos | Conexión |
 |------|----------|------------|----------|
-| PC / celular del usuario | Navegador (Swagger UI), Postman o `curl` | Cliente HTTP; app autenticadora (códigos TOTP) | HTTPS 443 / JSON → Render |
-| Render — servicio web `alertabarrio-backend` | Contenedor Docker, `python:3.11-slim` | backend (FastAPI + uvicorn, puerto `$PORT`); MotorAlertas en memoria | MongoDB / TCP 27017 (TLS) → Atlas |
+| PC / celular del usuario | Navegador, Postman o `curl` | Cliente HTTP; app autenticadora (códigos TOTP) | HTTPS 443 / JSON → Render (API REST y `/docs`) |
+| Render — servicio web `alertabarrio-backend` | Contenedor Docker, `python:3.11-slim` | backend (FastAPI + uvicorn, puerto `$PORT`); **Swagger UI (`/docs`), servida por el propio backend**; MotorAlertas en memoria | MongoDB / TCP 27017 (TLS) → Atlas |
 | MongoDB Atlas — clúster M0 (AWS) | Replica set, MongoDB 7 | base `alertabarrio`: 6 colecciones + `counters` | — |
-| GitHub | Repositorio + Actions | `ci.yml` (pruebas e imagen Docker), `keep-alive.yml` (ping cada 10 min) | HTTPS → Render (deploy hook y ping) |
+| GitHub | Repositorio + Actions | `ci.yml` (pruebas, imagen Docker y deploy hook), `keep-alive.yml` (cada 10 min) | HTTPS POST al deploy hook de Render; `GET /api/v1/hello` del backend |
 
 ---
 

@@ -2,13 +2,14 @@
 title Vista de Despliegue - AlertaBarrio (producción)
 
 node "PC / celular del usuario\n<<dispositivo>>" as N1 {
-  artifact "Cliente HTTP\n(Swagger UI, Postman, curl)" as A1
+  artifact "Cliente HTTP\n(navegador, Postman o curl)" as A1
   artifact "App autenticadora\n(códigos TOTP 2FA)" as A1b
 }
 
 cloud "Render (nube)" as R {
   node "Servicio web alertabarrio-backend\n<<contenedor Docker, python:3.11-slim>>" as N3 {
     artifact "backend (FastAPI + uvicorn)\npuerto $PORT (8000)" as A3
+    artifact "Swagger UI (/docs)\nservida por el backend" as A3c
     artifact "MotorAlertas\n(estructuras en memoria)" as A3b
   }
 }
@@ -18,11 +19,12 @@ node "MongoDB Atlas - clúster M0 (AWS)\n<<replica set, MongoDB 7>>" as N5 {
 }
 
 node "GitHub\n<<repositorio + Actions>>" as N7 {
-  artifact "ci.yml\n(pruebas, imagen Docker)" as A7
-  artifact "keep-alive.yml\n(ping cada 10 min)" as A7b
+  artifact "ci.yml\n(pruebas, imagen Docker,\ndeploy hook)" as A7
+  artifact "keep-alive.yml\n(cada 10 min)" as A7b
 }
 
-N1 --> N3 : HTTPS 443 / JSON (API REST)
+N1 --> N3 : HTTPS 443 / JSON (API REST y /docs)
 N3 --> N5 : MongoDB / TCP 27017 (TLS)
-N7 --> N3 : HTTPS (deploy hook, ping)
+A7 --> N3 : HTTPS POST deploy hook
+A7b --> N3 : HTTPS GET /api/v1/hello
 @enduml
