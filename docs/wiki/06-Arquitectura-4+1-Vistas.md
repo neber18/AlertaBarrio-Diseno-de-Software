@@ -28,19 +28,29 @@ AlertaBarrio como caja negra y los flujos de información con su entorno.
 
 ![Vista Funcional](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Funcional_AlertaBarrio.png)
 
-| Nº | Componente | Responsabilidad | Interfaz que ofrece |
-|----|------------|-----------------|---------------------|
-| 1 | Gestión de Reportes | Recibir reportes, cambios de estado, feed y confirmaciones | recibir reporte (puerto de servicio), consultar alertas, moderar reportes (puerto de gestión) |
-| 2 | Autenticación y Seguridad | Registro, JWT, roles, bloqueo por intentos, 2FA | iniciar sesión, validar acceso |
-| 3 | Notificaciones | Suscripciones por barrio y cola FIFO de avisos | enviar notificación, gestionar suscripciones |
-| 4 | Rutas Seguras | Grafo de barrios con Dijkstra y BFS | calcular ruta |
+| Nº | Componente | Responsabilidad | Interfaces que ofrece |
+|----|------------|-----------------|-----------------------|
+| 1 | Gestión de Reportes | Recibir reportes, cambios de estado, feed, confirmaciones e indicadores | recibir reporte (puerto de servicio), consultar alertas, confirmar alerta, ver mis reportes, consultar estado y estadísticas (`/stats`, `/ds/state`, `/health`), moderar reportes (puerto de gestión) |
+| 2 | Autenticación y Seguridad | Registro, JWT, roles, bloqueo por intentos, límite de solicitudes, 2FA | registrarse, iniciar sesión, validar acceso |
+| 3 | Notificaciones | Suscripciones por barrio, cola FIFO de avisos y despacho a la BD | enviar notificación, gestionar suscripciones, despachar notificaciones (`/notifications/dispatch`) |
+| 4 | Rutas Seguras | Grafo de barrios con Dijkstra y BFS, castigo por gravedad de alertas | calcular ruta |
 | 5 | Catálogo de Barrios | Barrios, tipos de incidente, búsqueda binaria, barrio más cercano y ranking | consultar barrios |
 | 6 | Motor de Alertas | Estructuras en memoria: cola de prioridad, pilas, feeds, AVL, grafo | ordenar en memoria |
-| 7 | Persistencia MongoDB | Guardar y leer documentos, ids con `counters`, índices | guardar documentos |
+| 7 | Persistencia MongoDB | Guardar y leer documentos, ids con `counters`, índices | guardar y leer documentos |
 
-- **Gestión de Reportes requiere:** validar acceso, enviar notificación, consultar barrios, ordenar en memoria y guardar documentos.
-- **Rutas Seguras requiere** consultar barrios; **Notificaciones** requiere ordenar en memoria y guardar documentos; **Autenticación** requiere guardar documentos.
-- **Actores («use»):** Visitante → iniciar sesión, consultar alertas, calcular ruta; Vecino → recibir reporte, gestionar suscripciones; Moderador → moderar reportes (puerto de gestión).
+| Componente | Interfaces que requiere |
+|------------|-------------------------|
+| Gestión de Reportes | validar acceso, enviar notificación, consultar barrios, ordenar en memoria, guardar y leer documentos |
+| Rutas Seguras | consultar barrios, ordenar en memoria (grafo y gravedad por zona), guardar y leer documentos |
+| Catálogo de Barrios | ordenar en memoria (ranking y búsqueda), guardar y leer documentos |
+| Notificaciones | ordenar en memoria (cola FIFO y suscritos), guardar y leer documentos |
+| Motor de Alertas | guardar y leer documentos (carga inicial con `engine.load`) |
+| Autenticación y Seguridad | guardar y leer documentos |
+
+**Actores («use»):**
+- **Visitante:** registrarse, iniciar sesión, consultar alertas, calcular ruta, consultar estado y estadísticas.
+- **Vecino:** recibir reporte, confirmar alerta, ver mis reportes, gestionar suscripciones.
+- **Moderador y Administrador:** moderar reportes (puerto de gestión) y despachar notificaciones; el administrador también consulta estado y estadísticas. Además, después de publicar o deshacer, el backend despacha las notificaciones solo, en segundo plano.
 
 ---
 

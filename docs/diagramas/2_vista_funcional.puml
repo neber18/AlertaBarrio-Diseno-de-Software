@@ -6,6 +6,7 @@ left to right direction
 actor Visitante
 actor Vecino
 actor Moderador
+actor Administrador
 
 component "<<component>>\nAutenticación y Seguridad\n(2)" as Auth
 component "<<component>>\nNotificaciones\n(3)" as Notif
@@ -15,22 +16,29 @@ component "<<component>>\nPersistencia MongoDB\n(7)" as Per
 component "<<component>>\nRutas Seguras\n(4)" as Rutas
 component "<<component>>\nGestión de Reportes\n(1)" as Rep
 
+() "registrarse" as A2
 () "iniciar sesión" as A0
 () "validar acceso" as A1
 () "enviar notificación" as N1
 () "gestionar suscripciones" as N2
+() "despachar notificaciones" as N3
 () "consultar barrios" as C1
-() "ordenar en memoria\n(cola, pila, feed, AVL)" as E1
-() "guardar documentos" as P1
+() "ordenar en memoria\n(cola, pila, feed, AVL, grafo)" as E1
+() "guardar y leer documentos" as P1
 () "calcular ruta" as R1
 () "recibir reporte\n(service port)" as S1
 () "consultar alertas" as S2
 () "moderar reportes\n(management port)" as S3
+() "confirmar alerta" as S4
+() "ver mis reportes" as S5
+() "consultar estado y estadísticas\n(/stats, /ds/state, /health)" as S6
 
+Auth -- A2
 Auth -- A0
 Auth -- A1
 Notif -- N1
 Notif -- N2
+Notif -- N3
 Cat -- C1
 Eng -- E1
 Per -- P1
@@ -38,21 +46,37 @@ Rutas -- R1
 Rep -- S1
 Rep -- S2
 Rep -- S3
+Rep -- S4
+Rep -- S5
+Rep -- S6
 
-A1 )-- Rep : requiere
-N1 )-- Rep : requiere
-C1 )-- Rep : requiere
-E1 )-- Rep : requiere
-P1 )-- Rep : requiere
-C1 )-- Rutas : requiere
-E1 )-- Notif : requiere
-P1 )-- Notif : requiere
-P1 )-- Auth : requiere
+A1 )-- Rep
+N1 )-- Rep
+C1 )-- Rep
+E1 )-- Rep
+P1 )-- Rep
+C1 )-- Rutas
+E1 )-- Rutas
+P1 )-- Rutas
+E1 )-- Cat
+P1 )-- Cat
+E1 )-- Notif
+P1 )-- Notif
+P1 )-- Eng : carga inicial
+P1 )-- Auth
 
+Visitante ..> A2 : <<use>>
 Visitante ..> A0 : <<use>>
 Visitante ..> S2 : <<use>>
 Visitante ..> R1 : <<use>>
+Visitante ..> S6 : <<use>>
 Vecino ..> S1 : <<use>>
+Vecino ..> S4 : <<use>>
+Vecino ..> S5 : <<use>>
 Vecino ..> N2 : <<use>>
 Moderador ..> S3 : <<use>>
+Moderador ..> N3 : <<use>>
+Administrador ..> S3 : <<use>>
+Administrador ..> N3 : <<use>>
+Administrador ..> S6 : <<use>>
 @enduml
