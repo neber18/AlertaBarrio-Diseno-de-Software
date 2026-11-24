@@ -49,7 +49,7 @@ Este documento describe:
 | Problema | Los vecinos se enteran de los robos y riesgos de su barrio tarde y por rumores en grupos de chat, sin saber si son ciertos |
 | Solución | Reportes geolocalizados y moderados, alertas por barrio, confirmación entre vecinos, mapa de calor y ruta segura con IA |
 | Usuarios | Vecinos, Moderadores, Administradores |
-| Página publicada | https://alertabarrio-frontend.vercel.app |
-| Tecnología | React + TypeScript (frontend), Python + FastAPI (backend e IA), **MongoDB 7 en MongoDB Atlas** |
-| Código | Carpetas `frontend/`, `backend/` y `ai/` de este repositorio |
+| Cómo se usa | API REST con Swagger en `/docs` (sin interfaz gráfica) |
+| Tecnología | Python + FastAPI (backend e IA), **MongoDB 7 en MongoDB Atlas** |
+| Código | Carpetas `backend/` y `ai/` de este repositorio |
 | Historias de usuario | 21 (ver *Issues* HU_001 a HU_021) |

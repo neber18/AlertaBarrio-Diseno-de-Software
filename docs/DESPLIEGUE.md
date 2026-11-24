@@ -1,4 +1,4 @@
-# Despliegue: MongoDB Atlas + Render + Vercel
+# Despliegue: MongoDB Atlas + Render
 
 ## 1. Crear la base de datos en MongoDB Atlas
 
@@ -40,7 +40,7 @@
 | `MONGODB_URI` | La URI completa de Atlas (paso 1.5) |
 | `JWT_SECRET` | Un texto largo y secreto |
 | `AI_SERVICE_URL` | URL del servicio de IA en Render |
-| `CORS_ORIGINS` | `https://TU-FRONTEND.vercel.app,http://localhost:5173` |
+| `CORS_ORIGINS` | `*` (o los dominios que vayan a consumir la API, separados por coma) |
 | `SEED_ON_STARTUP` | `true` (carga los datos de ejemplo si la base está vacía) |
 | `PROFESOR_PASSWORD` | (opcional) clave de la cuenta del profesor |
 
@@ -51,21 +51,13 @@
 
 > Primero crea `MONGODB_URI` y después despliega: sin ella el backend no arranca.
 
-## 3. Frontend en Vercel
+## 3. Probar la API publicada
 
-*Add New → Project* → el repositorio → **Root Directory:** `frontend` → variables:
-
-| Variable | Valor |
-|----------|-------|
-| `VITE_API_URL` | URL del backend en Render (sin `/` al final) |
-| `VITE_AI_URL` | URL de la IA en Render (para despertarla) |
-| `VITE_TEAM_MEMBERS` | Nombres del equipo, separados por coma |
-
-El frontend **no cambia** por usar MongoDB: habla con la API y los ids siguen siendo números.
+Abre `https://TU-BACKEND.onrender.com/docs` (Swagger), haz `POST /api/v1/auth/login` con `ana@alertabarrio.co` / `Alerta2026*`, copia el `access_token` y pégalo en **Authorize**.
 
 ## 4. CI y servidores despiertos
 
-- `.github/workflows/ci.yml` corre las pruebas del backend contra un **MongoDB 7** real, las de la IA y el build del frontend.
+- `.github/workflows/ci.yml` corre las pruebas del backend contra un **MongoDB 7** real, las de la IA y construye las imágenes Docker.
 - Para desplegar desde el CI, crea los secretos `RENDER_DEPLOY_HOOK_BACKEND` y `RENDER_DEPLOY_HOOK_AI` (*Settings → Secrets and variables → Actions*).
 - `keep-alive.yml` despierta Render cada 10 minutos: crea las variables `BACKEND_URL` y `AI_URL`.
 
@@ -76,4 +68,4 @@ El frontend **no cambia** por usar MongoDB: habla con la API y los ids siguen si
 | `bad auth : authentication failed` | La URI tiene `<db_password>` o una clave vieja | Pon la clave real del *Database User* |
 | `ServerSelectionTimeoutError` | Atlas no deja entrar a Render | *Network Access* → `0.0.0.0/0` |
 | Clave nueva que no funciona | Faltó **Update User** en Atlas | Edita el usuario, genera la clave y dale **Update User** |
-| Frontend sin datos | `VITE_API_URL` mal o CORS | Revisa la URL y `CORS_ORIGINS` en Render |
+| `502` o la primera llamada tarda | Render estaba dormido | Espera unos segundos o activa `keep-alive.yml` |

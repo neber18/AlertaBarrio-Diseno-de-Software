@@ -27,7 +27,7 @@ Los requisitos funcionales se agrupan en 6 épicas. Cada uno está ligado a sus 
 | RF-10 | El sistema debe generar un borrador de reporte a partir de lo que el vecino dice o escribe a Vigía. | HU_006 |
 | RF-11 | El sistema debe enviar cada reporte al componente de IA y guardar el tipo sugerido, la confianza y el riesgo de la zona. | HU_007 |
 | RF-12 | El sistema debe calcular la prioridad del reporte y ubicarlo en la cola de moderación. | HU_007 |
-| RF-13 | El sistema debe mostrar al vecino sus reportes y el historial de estados. | HU_008 |
+| RF-13 | El sistema debe entregar al vecino sus reportes y el historial de estados. | HU_008 |
 
 ## 4.3 EP-03 Moderación
 
@@ -47,8 +47,8 @@ Los requisitos funcionales se agrupan en 6 épicas. Cada uno está ligado a sus 
 
 | ID | Requisito funcional | HU |
 |----|---------------------|----|
-| RF-19 | El sistema debe mostrar las alertas publicadas, filtrables por barrio. | HU_012 |
-| RF-20 | El sistema debe mostrar las alertas en un mapa coloreadas por tipo de incidente. | HU_013 |
+| RF-19 | El sistema debe entregar las alertas publicadas, filtrables por barrio. | HU_012 |
+| RF-20 | El sistema debe entregar las alertas activas con sus coordenadas y el color de su tipo de incidente, para pintarlas en un mapa. | HU_013 |
 | RF-21 | El sistema debe permitir a otros vecinos confirmar una alerta y marcarla como verificada al alcanzar 2 confirmaciones. | HU_014 |
 
 ## 4.5 EP-05 Notificaciones
@@ -66,11 +66,11 @@ Los requisitos funcionales se agrupan en 6 épicas. Cada uno está ligado a sus 
 
 | ID | Requisito funcional | HU |
 |----|---------------------|----|
-| RF-24 | El sistema debe mostrar el riesgo por barrio, día y franja horaria (mapa de calor). | HU_017 |
+| RF-24 | El sistema debe entregar el riesgo por barrio, día y franja horaria (mapa de calor). | HU_017 |
 | RF-25 | El sistema debe generar un resumen diario por barrio. | HU_018 |
 | RF-26 | El sistema debe responder preguntas del vecino con datos reales de las alertas. | HU_019 |
 | RF-27 | El sistema debe calcular la ruta más segura, la más corta y la de menos saltos entre dos barrios. | HU_020 |
-| RF-28 | El sistema debe mostrar un panel con el estado de los servicios e indicadores de reportes. | HU_021 |
+| RF-28 | El sistema debe entregar el estado de los servicios e indicadores de reportes (`GET /api/v1/stats`). | HU_021 |
 
 ## 4.7 Ciclo de vida de un reporte
 

@@ -10,7 +10,7 @@ AlertaBarrio permite:
 
 - **A los vecinos:** reportar incidentes de seguridad con formulario o hablando con el asistente **Vigía**, ver las alertas de su barrio en lista y en mapa, confirmar alertas, seguir barrios y recibir notificaciones, consultar el mapa de calor de riesgo y pedir la **ruta más segura** entre dos barrios.
 - **A los moderadores:** revisar los reportes en una **cola de prioridad** (primero el más grave), publicarlos o rechazarlos y **deshacer** una decisión equivocada.
-- **A los administradores:** las mismas funciones del moderador, con acceso a todas las pantallas de gestión.
+- **A los administradores:** las mismas funciones del moderador, con acceso a todos los endpoints de gestión.
 
 **Fuera del alcance de la versión 2.0:** contacto directo con la Policía o la línea 123, aplicación móvil nativa (la web funciona en el celular), chat entre vecinos y gestión de usuarios desde la interfaz.
 
@@ -35,12 +35,12 @@ AlertaBarrio permite:
 - IEEE 830-1998, *Recommended Practice for Software Requirements Specifications*.
 - Kruchten, P. (1995). *The 4+1 View Model of Architecture*. IEEE Software.
 - Ley 1581 de 2012 (Colombia), protección de datos personales.
-- Repositorios del proyecto: alertabarrio-frontend, alertabarrio-backend y alertabarrio-ai.
+- Código del proyecto: carpetas `backend/` y `ai/` de este repositorio.
 
 ## 1.5 Visión general del documento
 
 - **02 Descripción General:** contexto, usuarios, restricciones y supuestos.
-- **03 Requisitos de interfaz externa:** pantallas, hardware, software y comunicaciones.
+- **03 Requisitos de interfaz externa:** API REST (sin interfaz gráfica), hardware, software y comunicaciones.
 - **04 Características del sistema:** requisitos funcionales agrupados por épica.
 - **05 Requisitos del sistema:** requisitos no funcionales y atributos de calidad.
 - **06 Arquitectura 4+1 Vistas:** vistas de Contexto, Funcional, Lógica y Desarrollo, más los escenarios.

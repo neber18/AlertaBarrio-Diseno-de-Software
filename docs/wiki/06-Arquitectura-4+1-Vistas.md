@@ -8,22 +8,21 @@ La arquitectura de AlertaBarrio se documenta con el modelo de **4+1 vistas** de 
 
 ## 1. Vista de Contexto
 
-📷 *Imagen de la Vista de Contexto*
+![Vista de Contexto](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Contexto_AlertaBarrio.png)
 
 AlertaBarrio como caja negra y los flujos de información con su entorno.
 
 | Actor / sistema externo | Hacia AlertaBarrio | Desde AlertaBarrio |
 |-------------------------|--------------------|--------------------|
-| Vecinos | Reportes, confirmaciones, barrios a seguir, preguntas a Vigía | Alertas del barrio, notificaciones, mapa de calor, ruta segura |
+| Vecinos (desde un cliente HTTP) | Reportes con coordenadas, confirmaciones, barrios a seguir, preguntas a Vigía | Alertas del barrio, notificaciones, mapa de calor, ruta segura |
 | Moderadores / Administradores | Publicar, rechazar y deshacer | Cola de reportes por prioridad, estadísticas |
 | Componente de IA | Clasificación, riesgo de zona, mapa de calor, resumen, respuestas | Texto del reporte, historial del barrio, preguntas |
-| OpenStreetMap | Mosaicos del mapa y direcciones | Coordenadas y búsquedas de dirección |
 
 ---
 
 ## 2. Vista Funcional
 
-📷 *Imagen de la Vista Funcional*
+![Vista Funcional](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Funcional_AlertaBarrio.png)
 
 | Nº | Componente | Responsabilidad | Interfaz que ofrece |
 |----|------------|-----------------|---------------------|
@@ -40,7 +39,7 @@ AlertaBarrio como caja negra y los flujos de información con su entorno.
 
 ## 3. Vista Lógica
 
-📷 *Imagen de la Vista Lógica*
+![Vista Logica](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Logica_AlertaBarrio.png)
 
 Diagrama de clases del dominio. Cada clase lleva el estereotipo **«document»** (tiene colección propia en MongoDB) o **«embedded»** (se guarda dentro de otro documento).
 
@@ -68,48 +67,46 @@ Diagrama de clases del dominio. Cada clase lleva el estereotipo **«document»**
 | **Asociación** | **Referencia por id** (+ copia del nombre si se muestra mucho) | *Reporte* guarda `user_id`, `neighborhood_id`, `incident_type_id` y `reporter_name` |
 | **Rol** | Un campo con valor fijo | `rol`: citizen, moderator o admin (antes una tabla aparte) |
 
-- Los **ids son enteros** (1, 2, 3…), generados con la colección `counters`, para no cambiar el frontend ni las estructuras de datos.
+- Los **ids son enteros** (1, 2, 3…), generados con la colección `counters`, para no cambiar las URLs de la API ni las estructuras de datos.
 - Las clases embebidas no tienen colección ni id propio (salvo *CambioEstado*, que guarda un id para poder deshacer exactamente ese cambio).
 
 ---
 
 ## 4. Vista de Desarrollo
 
-📷 *Imagen de la Vista de Desarrollo*
+![Vista de Desarrollo](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Desarrollo_AlertaBarrio.png)
 
 | Capa / repositorio | Módulos |
 |--------------------|---------|
-| Presentación — `alertabarrio-frontend` | `App.tsx` (rutas), `pages/` (Home, MapPage, Alerts, NewReport, VigiaPage, RoutePage, Moderation, Notifications, Docs, Auth), `components/` (BaseMap, ReportCard, VoiceReport, Assistant, AddressSearch…), `auth/AuthContext`, `api/client`, `lib/` |
+| Interfaz — API REST | Swagger UI generado por FastAPI en `/docs`; lo consumen Postman, `curl` o cualquier cliente futuro |
 | Lógica de negocio — `alertabarrio-backend/app` | `main.py`, `routers/` (auth, reports, moderation, notifications, routes, ai, catalog, general), `services/` (engine, report_service, ai_client, geo), `security.py`, `schemas.py` |
 | Estructuras de datos — `app/structures` | dynamic_array, linked_list, stack, queue, priority_queue, hash_table, bst (AVL), graph, sorting |
 | Persistencia | `models.py` (documentos «document» / «embedded»), `database.py` (PyMongo, contadores de ids e índices), `seed.py` → **MongoDB 7** (local con Docker, producción en MongoDB Atlas) |
 | Servicio externo — `alertabarrio-ai` | API de IA (clasificador, riesgo, KDE, resúmenes) |
 
-Las páginas solo hablan con el backend a través de `api/client`. Los routers delegan en `services`, que usan `structures` y `models`. Solo `database.py` y `models.py` hablan con MongoDB, y solo `ai_client` habla con el componente de IA.
+Los clientes solo hablan con el backend por HTTP/JSON. Los routers delegan en `services`, que usan `structures` y `models`. Solo `database.py` y `models.py` hablan con MongoDB, y solo `ai_client` habla con el componente de IA.
 
 ---
 
 ## 5. Vista de Despliegue (adicional)
 
-📷 *Imagen de la Vista de Despliegue*
+![Vista de Despliegue](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Despliegue_AlertaBarrio.png)
 
 | Nodo | Ambiente | Artefacto | Conexión |
 |------|----------|-----------|----------|
-| Navegador del vecino | Chrome, Edge, Safari, Android | Página web (React) | HTTPS → Vercel |
-| Vercel | CDN | `frontend` (build de Vite) | HTTPS/JSON → Render |
+| Cliente | Navegador (Swagger UI), Postman o `curl` | — | HTTPS/JSON → Render |
 | Render — servicio web | Docker, Python 3.11 | `alertabarrio-backend` (FastAPI + uvicorn) | HTTP/JSON → IA · MongoDB / TCP 27017 (TLS) → Atlas |
 | Render — servicio web | Docker, Python 3.11 | `alertabarrio-ai` (FastAPI) | — |
 | MongoDB Atlas — clúster M0 (AWS) | MongoDB 7 | 9 colecciones del sistema | — |
-| OpenStreetMap | Servicio público | Mosaicos y Nominatim | HTTPS desde el navegador |
 
 ---
 
 ## +1. Escenarios
 
-- **HU_005 / HU_007 — Reportar un incidente:** Vecino → `/alertas` → `POST /api/v1/reports` → guarda en BD (created) → Componente de IA clasifica y calcula riesgo → se calcula la prioridad → entra a la cola de moderación.
-- **HU_009 / HU_010 — Publicar una alerta:** Moderador → `/moderacion` → toma el reporte más grave del heap → publica → feed del barrio + cola de notificaciones → vecinos suscritos.
+- **HU_005 / HU_007 — Reportar un incidente:** Vecino → `POST /api/v1/reports` → guarda en BD (created) → Componente de IA clasifica y calcula riesgo → se calcula la prioridad → entra a la cola de moderación.
+- **HU_009 / HU_010 — Publicar una alerta:** Moderador → `POST /api/v1/moderation/next` → toma el reporte más grave del heap → publica → feed del barrio + cola de notificaciones → vecinos suscritos.
 - **HU_014 — Confirmar una alerta:** Vecino → `POST /api/v1/reports/{id}/verify` → `$push` atómico a `reports.verifications` solo si el vecino no estaba → con 2 confirmaciones pasa a *verified*.
-- **HU_020 — Ruta segura:** Vecino → `/rutas` → `GET /api/v1/routes/safe` → grafo de barrios + Dijkstra con castigo por alertas.
+- **HU_020 — Ruta segura:** Vecino → `GET /api/v1/routes/safe` → grafo de barrios + Dijkstra con castigo por alertas.
 
 
 ---

@@ -1,6 +1,6 @@
 # Migración de PostgreSQL a MongoDB
 
-AlertaBarrio empezó con **PostgreSQL + SQLAlchemy** (14 tablas). Esta versión usa **MongoDB 7 + PyMongo** (9 colecciones). Las 40 pruebas del backend pasan contra un MongoDB real y el frontend no cambió.
+AlertaBarrio empezó con **PostgreSQL + SQLAlchemy** (14 tablas). Esta versión usa **MongoDB 7 + PyMongo** (9 colecciones). Las 40 pruebas del backend pasan contra un MongoDB real y la API no cambió.
 
 ## 1. Cómo se pensó el modelo
 
@@ -33,7 +33,7 @@ AlertaBarrio empezó con **PostgreSQL + SQLAlchemy** (14 tablas). Esta versión 
 
 ## 3. Decisiones
 
-1. **Ids enteros con `counters`.** Mongo usaría ObjectId (texto largo). Se mantuvieron números para no tocar el frontend, las URLs ni las estructuras de datos (tabla hash, AVL, grafo).
+1. **Ids enteros con `counters`.** Mongo usaría ObjectId (texto largo). Se mantuvieron números para no tocar los clientes de la API, las URLs ni las estructuras de datos (tabla hash, AVL, grafo).
 2. **Guardar a mano.** En Mongo no hay `commit()` que guarde lo que cambió: se llama `save()` o `update_one` después de cada cambio.
 3. **Operaciones atómicas.** Cambio de estado = un `update_one` con `$set` + `$push`. Deshacer = `$pull`. Confirmar = `$push` solo si el vecino no está en la lista (evita confirmar dos veces).
 4. **Índices únicos** en vez de `UNIQUE`: correo, nombre de barrio, código de tipo, suscripción (usuario + barrio) y resumen (barrio + fecha). Si se repite, Mongo lanza `DuplicateKeyError` y la API responde **409**.

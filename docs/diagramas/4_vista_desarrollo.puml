@@ -2,26 +2,10 @@
 title Vista de Desarrollo - AlertaBarrio
 skinparam packageStyle rectangle
 
-package "frontend/ (React + Vite)" {
-  class App {
-  +rutas()
-}
-  class Pages {
-  Home, MapPage, Alerts
-  NewReport, VigiaPage, RoutePage
-  Moderation, Notifications, Auth
-}
-  class Components {
-  BaseMap, ReportCard
-  VoiceReport, Assistant, AddressSearch
-}
-  class AuthContext {
-  +login()
-  +logout()
-}
-  class ApiClient {
-  +get()
-  +post()
+package "Cliente (fuera del repositorio)" {
+  class ClienteHTTP <<Swagger UI / Postman / curl>> {
+  +GET /api/v1/...
+  +POST /api/v1/...
 }
 }
 
@@ -77,12 +61,7 @@ package "ai/ (FastAPI)" {
 }
 }
 
-App ..> Pages
-Pages ..> Components
-Pages ..> AuthContext
-Pages ..> ApiClient
-AuthContext ..> ApiClient
-ApiClient ..> Main : HTTP/JSON
+ClienteHTTP ..> Main : HTTP/JSON
 Main ..> Routers
 Routers ..> Security
 Routers ..> Services

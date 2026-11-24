@@ -1,11 +1,8 @@
 @startuml Vista_Despliegue_AlertaBarrio
 title Vista de Despliegue - AlertaBarrio
 
-node "Celular / PC del vecino" as N1 {
-  artifact "Navegador\n(página React)" as A1
-}
-node "Vercel (CDN)" as N2 {
-  artifact "frontend\n(build de Vite)" as A2
+node "PC / celular del usuario" as N1 {
+  artifact "Cliente HTTP\n(Swagger UI, Postman, curl)" as A1
 }
 node "Render - servicio web\n<<Docker, Python 3.11>>" as N3 {
   artifact "alertabarrio-backend\n(FastAPI + uvicorn)" as A3
@@ -16,11 +13,8 @@ node "Render - servicio web\n<<Docker, Python 3.11>>" as N4 {
 node "MongoDB Atlas - clúster M0 (AWS)\n<<MongoDB 7>>" as N5 {
   database "colecciones del sistema" as A5
 }
-cloud "OpenStreetMap" as N6
 
-N1 --> N2 : HTTPS
 N1 --> N3 : HTTPS / JSON (API REST)
-N1 --> N6 : HTTPS (mapas y direcciones)
 N3 --> N4 : HTTPS / JSON
 N3 --> N5 : MongoDB / TCP 27017 (TLS)
 @enduml

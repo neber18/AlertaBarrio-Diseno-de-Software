@@ -12,28 +12,25 @@
 - Servicio aparte (FastAPI). Clasificador **Naive Bayes** hecho a mano, riesgo por zona con decaimiento temporal, mapa de calor **KDE**, resumen diario y asistente **Vigía** (Gemini, Ollama, Groq o plantillas).
 - El modelo se cambia con variables de entorno, sin tocar el backend.
 
-### 3. Frontend (`frontend/`)
-- **React 19 + TypeScript + Vite + Leaflet**. Panel, mapa en vivo, reporte por voz, moderación (heap dibujado), ruta segura y notificaciones.
-
-### 4. Base de datos
+### 3. Base de datos
 - Local: `docker compose up mongodb` (+ mongo-express con `--profile tools`).
 - Producción: **MongoDB Atlas** (clúster M0).
 - Modelo en `backend/database/README.md`.
 
-### 5. CI/CD (GitHub Actions)
-- `ci.yml`: lint con ruff, **40 pruebas del backend contra MongoDB 7**, 19 pruebas de la IA, build del frontend, imágenes Docker y deploy hooks de Render.
+### 4. CI/CD (GitHub Actions)
+- `ci.yml`: lint con ruff, **40 pruebas del backend contra MongoDB 7**, 19 pruebas de la IA, imágenes Docker y deploy hooks de Render.
 - `keep-alive.yml`: despierta los servicios de Render cada 10 minutos.
 
-### 6. Ejecución local
-- `docker-compose.yml`: MongoDB, mongo-express, IA, backend y frontend.
+### 5. Ejecución local
+- `docker-compose.yml`: MongoDB, mongo-express, IA y backend.
 - `run.sh`: levanta todo con un comando (usa el MongoDB de la máquina si ya existe).
 - `.devcontainer/`: entorno listo para VS Code / Codespaces.
 
-### 7. Despliegue
-- `render.yaml` (Blueprint de backend e IA) y `frontend/vercel.json`.
+### 6. Despliegue
+- `render.yaml` (Blueprint de backend e IA).
 - Guía en `docs/DESPLIEGUE.md`.
 
-### 8. Documentación
+### 7. Documentación
 - Wiki (requisitos IEEE 830 + arquitectura 4+1), 21 historias de usuario y diagramas en `docs/`.
 
 ## 📊 Números
