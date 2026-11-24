@@ -24,9 +24,7 @@ Los requisitos funcionales se agrupan en 6 épicas. Cada uno está ligado a sus 
 | RF-07 | El sistema debe permitir crear un reporte con tipo de incidente, título, descripción, ubicación, fecha y foto opcional. | HU_005 |
 | RF-08 | El sistema debe asignar el barrio del reporte según la ubicación marcada. | HU_005 |
 | RF-09 | El sistema debe rechazar reportes con fecha futura. | HU_005 |
-| RF-10 | El sistema debe generar un borrador de reporte a partir de lo que el vecino dice o escribe a Vigía. | HU_006 |
-| RF-11 | El sistema debe enviar cada reporte al componente de IA y guardar el tipo sugerido, la confianza y el riesgo de la zona. | HU_007 |
-| RF-12 | El sistema debe calcular la prioridad del reporte y ubicarlo en la cola de moderación. | HU_007 |
+| RF-12 | El sistema debe calcular la prioridad del reporte (gravedad del tipo × 20 + 5 si tiene foto) y ubicarlo en la cola de moderación. | HU_005 |
 | RF-13 | El sistema debe entregar al vecino sus reportes y el historial de estados. | HU_008 |
 
 ## 4.3 EP-03 Moderación
@@ -60,17 +58,16 @@ Los requisitos funcionales se agrupan en 6 épicas. Cada uno está ligado a sus 
 | RF-22 | El sistema debe permitir seguir y dejar de seguir barrios. | HU_015 |
 | RF-23 | El sistema debe notificar a los suscritos de un barrio cuando se publique o retire una alerta allí. | HU_016, HU_011 |
 
-## 4.6 EP-06 Inteligencia artificial y prevención
+## 4.6 EP-06 Prevención e indicadores
 
 **Prioridad:** Media
 
 | ID | Requisito funcional | HU |
 |----|---------------------|----|
-| RF-24 | El sistema debe entregar el riesgo por barrio, día y franja horaria (mapa de calor). | HU_017 |
-| RF-25 | El sistema debe generar un resumen diario por barrio. | HU_018 |
-| RF-26 | El sistema debe responder preguntas del vecino con datos reales de las alertas. | HU_019 |
 | RF-27 | El sistema debe calcular la ruta más segura, la más corta y la de menos saltos entre dos barrios. | HU_020 |
 | RF-28 | El sistema debe entregar el estado de los servicios e indicadores de reportes (`GET /api/v1/stats`). | HU_021 |
+
+> **Requisitos retirados:** RF-10, RF-11, RF-24, RF-25 y RF-26 dependían del componente de inteligencia artificial, que se quitó del proyecto. Se conservan los números de los demás para no romper la trazabilidad con las historias de usuario.
 
 ## 4.7 Ciclo de vida de un reporte
 

@@ -26,9 +26,9 @@
 
    Si la clave tiene `@ : / ? #`, hay que codificarlos (`@` → `%40`). Por eso conviene la clave autogenerada.
 
-## 2. Backend e IA en Render
+## 2. Backend en Render
 
-**Con el Blueprint (`render.yaml` en la raíz):** *New → Blueprint* → elige el repositorio. Render crea `alertabarrio-backend` y `alertabarrio-ai` y te pide los valores marcados con `sync: false`.
+**Con el Blueprint (`render.yaml` en la raíz):** *New → Blueprint* → elige el repositorio. Render crea `alertabarrio-backend` y te pide los valores marcados con `sync: false`.
 
 **A mano:**
 
@@ -39,7 +39,6 @@
 |----------|-------|
 | `MONGODB_URI` | La URI completa de Atlas (paso 1.5) |
 | `JWT_SECRET` | Un texto largo y secreto |
-| `AI_SERVICE_URL` | URL del servicio de IA en Render |
 | `CORS_ORIGINS` | `*` (o los dominios que vayan a consumir la API, separados por coma) |
 | `SEED_ON_STARTUP` | `true` (carga los datos de ejemplo si la base está vacía) |
 | `PROFESOR_PASSWORD` | (opcional) clave de la cuenta del profesor |
@@ -47,7 +46,6 @@
 3. Si venías de PostgreSQL, **borra** `DATABASE_URL`.
 4. **Save, rebuild, and deploy.** En *Logs* debe salir `Estructuras cargadas: ...`.
    Si sale `bad auth : authentication failed`, la clave de la URI está mal.
-5. Repite con **Root Directory:** `ai` para el componente de IA (variable opcional `GEMINI_API_KEY`).
 
 > Primero crea `MONGODB_URI` y después despliega: sin ella el backend no arranca.
 
@@ -57,9 +55,9 @@ Abre `https://TU-BACKEND.onrender.com/docs` (Swagger), haz `POST /api/v1/auth/lo
 
 ## 4. CI y servidores despiertos
 
-- `.github/workflows/ci.yml` corre las pruebas del backend contra un **MongoDB 7** real, las de la IA y construye las imágenes Docker.
-- Para desplegar desde el CI, crea los secretos `RENDER_DEPLOY_HOOK_BACKEND` y `RENDER_DEPLOY_HOOK_AI` (*Settings → Secrets and variables → Actions*).
-- `keep-alive.yml` despierta Render cada 10 minutos: crea las variables `BACKEND_URL` y `AI_URL`.
+- `.github/workflows/ci.yml` corre las pruebas del backend contra un **MongoDB 7** real y construye la imagen Docker.
+- Para desplegar desde el CI, crea el secreto `RENDER_DEPLOY_HOOK_BACKEND` (*Settings → Secrets and variables → Actions*).
+- `keep-alive.yml` despierta Render cada 10 minutos: crea la variable `BACKEND_URL`.
 
 ## Errores comunes
 

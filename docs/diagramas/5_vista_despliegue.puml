@@ -11,26 +11,18 @@ cloud "Render (nube)" as R {
     artifact "backend (FastAPI + uvicorn)\npuerto $PORT (8000)" as A3
     artifact "MotorAlertas\n(estructuras en memoria)" as A3b
   }
-  node "Servicio web alertabarrio-ai\n<<contenedor Docker, python:3.11-slim>>" as N4 {
-    artifact "ai (FastAPI + uvicorn)\npuerto $PORT (8001)" as A4
-  }
 }
 
 node "MongoDB Atlas - clúster M0 (AWS)\n<<replica set, MongoDB 7>>" as N5 {
-  database "base alertabarrio\n9 colecciones + counters" as A5
+  database "base alertabarrio\n6 colecciones + counters" as A5
 }
 
-cloud "Proveedor de LLM\n(Gemini API, opcional)" as N6
-
 node "GitHub\n<<repositorio + Actions>>" as N7 {
-  artifact "ci.yml\n(pruebas, imágenes)" as A7
+  artifact "ci.yml\n(pruebas, imagen Docker)" as A7
   artifact "keep-alive.yml\n(ping cada 10 min)" as A7b
 }
 
 N1 --> N3 : HTTPS 443 / JSON (API REST)
-N3 --> N4 : HTTPS / JSON
 N3 --> N5 : MongoDB / TCP 27017 (TLS)
-N4 --> N6 : HTTPS (resumen y chat)
 N7 --> N3 : HTTPS (deploy hook, ping)
-N7 --> N4 : HTTPS (deploy hook, ping)
 @enduml

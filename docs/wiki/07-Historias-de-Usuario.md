@@ -1,6 +1,6 @@
 # 07 Historias de Usuario
 
-AlertaBarrio tiene **21 historias de usuario** agrupadas en **6 épicas**, escritas a partir de lo que hace el código. Cada historia está también como *Issue* del repositorio (HU_001 a HU_021).
+AlertaBarrio tiene **16 historias de usuario activas** agrupadas en **6 épicas**, escritas a partir de lo que hace el código. Cada historia está también como *Issue* del repositorio. Las historias HU_006, HU_007, HU_017, HU_018 y HU_019 se **retiraron** porque dependían del componente de inteligencia artificial, que se quitó del proyecto; se conservan los números de las demás.
 
 Formato: *Como [rol], quiero [acción], para [beneficio]*. Prioridad con **MoSCoW** y estimación en **puntos de historia** (Fibonacci: 1, 2, 3, 5, 8, 13).
 
@@ -8,7 +8,7 @@ Formato: *Como [rol], quiero [acción], para [beneficio]*. Prioridad con **MoSCo
 
 | Rol | Descripción |
 |-----|-------------|
-| Visitante | Persona sin sesión; ve el panel, el mapa, la ruta segura y Vigía |
+| Visitante | Persona sin sesión; consulta indicadores, alertas, ranking y la ruta segura |
 | Vecino | Usuario registrado (`citizen`); reporta, confirma alertas y recibe notificaciones |
 | Moderador | `moderator` o `admin`; revisa la cola, publica, rechaza y deshace |
 
@@ -17,11 +17,11 @@ Formato: *Como [rol], quiero [acción], para [beneficio]*. Prioridad con **MoSCo
 | ID | Épica | Componente (Vista Funcional) | Dónde está en el código | Historias |
 |----|-------|------------------------------|-------------------------|-----------|
 | EP-01 | Cuenta y seguridad | Autenticación y Seguridad | `auth.py, security.py · /api/v1/auth/*` | HU_001, HU_002, HU_003, HU_004 |
-| EP-02 | Reportes de incidentes | Gestión de Reportes | `reports.py, ai.py · /api/v1/reports` | HU_005, HU_006, HU_007, HU_008 |
+| EP-02 | Reportes de incidentes | Gestión de Reportes | `reports.py · /api/v1/reports` | HU_005, HU_008 |
 | EP-03 | Moderación | Gestión de Reportes (puerto de gestión) | `moderation.py · /api/v1/moderation/*` | HU_009, HU_010, HU_011 |
 | EP-04 | Alertas comunitarias | Gestión de Reportes | `reports.py · /api/v1/feed, /reports/map` | HU_012, HU_013, HU_014 |
 | EP-05 | Notificaciones | Notificaciones | `notifications.py · /api/v1/subscriptions, /notifications` | HU_015, HU_016 |
-| EP-06 | Inteligencia artificial y prevención | Componente de IA (Vigía) + Rutas Seguras | `ai.py, routes.py · /api/v1/ai/*, /routes/safe, /stats` | HU_017, HU_018, HU_019, HU_020, HU_021 |
+| EP-06 | Prevención e indicadores | Rutas Seguras + Catálogo de Barrios | `routes.py, catalog.py, general.py · /routes/safe, /neighborhoods/ranking, /stats` | HU_020, HU_021 |
 
 ## 7.3 Backlog del producto
 
@@ -32,8 +32,8 @@ Formato: *Como [rol], quiero [acción], para [beneficio]*. Prioridad con **MoSCo
 | [HU_003](../issues/3) | EP-01 | Como **usuario**, quiero cambiar mi contraseña y cerrar todas mis sesiones abiertas, para proteger mi cuenta si alguien más la usó. | Media (Should) | 2 |
 | [HU_004](../issues/4) | EP-01 | Como **usuario**, quiero activar la verificación en dos pasos con una app autenticadora, para que nadie entre a mi cuenta solo con mi contraseña. | Baja (Could) | 5 |
 | [HU_005](../issues/5) | EP-02 | Como **vecino**, quiero reportar un incidente indicando el tipo, qué pasó y las coordenadas del lugar, para avisar a mi barrio de un problema de seguridad. | Alta (Must) | 5 |
-| [HU_006](../issues/6) | EP-02 | Como **vecino**, quiero contarle a Vigía por texto lo que pasó, para reportar rápido sin llenar un formulario. | Media (Should) | 8 |
-| [HU_007](../issues/7) | EP-02 | Como **vecino**, quiero ver qué tipo de incidente sugiere la IA y qué tan riesgosa es la zona, para saber si mi reporte quedó bien clasificado. | Alta (Must) | 5 |
+| ~~HU_006~~ | EP-02 | ~~Como **vecino**, quiero contarle a Vigía por texto lo que pasó, para reportar rápido sin llenar un formulario.~~ **Retirada (dependía de la IA).** | — | — |
+| ~~HU_007~~ | EP-02 | ~~Como **vecino**, quiero ver qué tipo de incidente sugiere la IA y qué tan riesgosa es la zona, para saber si mi reporte quedó bien clasificado.~~ **Retirada (dependía de la IA).** | — | — |
 | [HU_008](../issues/8) | EP-02 | Como **vecino**, quiero ver mis reportes y el historial de estados de cada uno, para saber si fueron publicados, verificados o rechazados. | Alta (Must) | 3 |
 | [HU_009](../issues/9) | EP-03 | Como **moderador**, quiero ver los reportes pendientes ordenados por prioridad y tomar el siguiente, para atender primero los incidentes más graves. | Alta (Must) | 5 |
 | [HU_010](../issues/10) | EP-03 | Como **moderador**, quiero publicar o rechazar un reporte con una nota, para que solo lleguen a los vecinos las alertas reales. | Alta (Must) | 3 |
@@ -43,13 +43,13 @@ Formato: *Como [rol], quiero [acción], para [beneficio]*. Prioridad con **MoSCo
 | [HU_014](../issues/14) | EP-04 | Como **vecino**, quiero confirmar que una alerta publicada es real, para que la comunidad sepa que es confiable. | Media (Should) | 2 |
 | [HU_015](../issues/15) | EP-05 | Como **vecino**, quiero seguir los barrios que me interesan, para recibir avisos solo de esos barrios. | Media (Should) | 2 |
 | [HU_016](../issues/16) | EP-05 | Como **vecino**, quiero recibir una notificación cuando se publique una alerta en un barrio que sigo, para enterarme a tiempo. | Alta (Must) | 3 |
-| [HU_017](../issues/17) | EP-06 | Como **vecino**, quiero ver qué barrios, días y horas tienen más riesgo, para evitar esas zonas en esos momentos. | Media (Should) | 5 |
-| [HU_018](../issues/18) | EP-06 | Como **vecino**, quiero leer un resumen diario de lo que pasó en mi barrio, para informarme sin revisar todas las alertas. | Baja (Could) | 3 |
-| [HU_019](../issues/19) | EP-06 | Como **vecino**, quiero preguntarle a Vigía, por ejemplo, qué barrio debo evitar hoy, para recibir consejos basados en las alertas reales. | Baja (Could) | 5 |
+| ~~HU_017~~ | EP-06 | ~~Como **vecino**, quiero ver qué barrios, días y horas tienen más riesgo, para evitar esas zonas en esos momentos.~~ **Retirada (dependía de la IA).** | — | — |
+| ~~HU_018~~ | EP-06 | ~~Como **vecino**, quiero leer un resumen diario de lo que pasó en mi barrio, para informarme sin revisar todas las alertas.~~ **Retirada (dependía de la IA).** | — | — |
+| ~~HU_019~~ | EP-06 | ~~Como **vecino**, quiero preguntarle a Vigía, por ejemplo, qué barrio debo evitar hoy, para recibir consejos basados en las alertas reales.~~ **Retirada (dependía de la IA).** | — | — |
 | [HU_020](../issues/20) | EP-06 | Como **vecino**, quiero pedir la ruta más segura entre dos barrios, para moverme evitando las zonas con alertas. | Media (Should) | 8 |
 | [HU_021](../issues/21) | EP-06 | Como **visitante**, quiero consultar el estado del sistema, los reportes por día y por tipo y el ranking de barrios, para entender la situación de seguridad de la ciudad. | Media (Should) | 3 |
 
-**Total: 84 puntos.** Must = 10 historias (38 puntos), Should = 8 historias (33 puntos), Could = 3 historias (13 puntos).
+**Total activo: 58 puntos.** Must = 9 historias (33 puntos), Should = 6 historias (20 puntos), Could = 1 historia (5 puntos). Las 5 historias retiradas sumaban 26 puntos.
 
 ## 7.4 Criterios de aceptación
 
@@ -78,26 +78,13 @@ Formato: *Como [rol], quiero [acción], para [beneficio]*. Prioridad con **MoSCo
 - La verificación solo queda activa después de ingresar un código válido de 6 dígitos.
 - Con la verificación activa, el inicio de sesión pide el código además de la contraseña.
 
-### HU_005 — Reportar con formulario
+### HU_005 — Reportar un incidente
 
 - Dado un vecino con sesión, cuando completa tipo de incidente, título, descripción y ubicación, entonces el reporte se guarda con estado created.
 - Con las coordenadas, el barrio se elige automáticamente (barrio más cercano).
 - Puede adjuntar una foto opcional.
 - Si la fecha del incidente está en el futuro, el sistema rechaza el reporte.
-
-### HU_006 — Reportar hablando con Vigía
-
-- Cuando el vecino escribe lo que pasó (`POST /api/v1/ai/report-draft`), entonces Vigía arma un borrador con tipo de incidente, título y descripción.
-- El barrio del borrador sale de las coordenadas que envía el cliente.
-- El vecino revisa el borrador, lo corrige si quiere y lo envía con `POST /api/v1/reports`.
-- Si la IA no está disponible, puede crear el reporte directamente con `POST /api/v1/reports`.
-
-### HU_007 — Clasificación del reporte por la IA
-
-- Al crear un reporte, el backend lo envía al componente de IA y la respuesta incluye el tipo sugerido, la confianza y el riesgo de la zona.
-- Si la IA tiene 70 % o más de confianza en un tipo más grave, la prioridad se calcula con esa gravedad.
-- El vecino ve en qué posición de la cola de moderación quedó su reporte.
-- Si la IA no responde, el reporte se guarda igual sin el análisis.
+- El reporte entra a la cola de moderación con prioridad = gravedad del tipo × 20 (+5 si tiene foto), y la respuesta dice en qué posición quedó.
 
 ### HU_008 — Mis reportes e historial
 
@@ -133,7 +120,6 @@ Formato: *Como [rol], quiero [acción], para [beneficio]*. Prioridad con **MoSCo
 
 - Dado cualquier visitante que consulta `GET /api/v1/reports/map`, entonces recibe cada alerta activa con latitud, longitud y color de gravedad, lista para pintarse en un mapa.
 - El color del punto corresponde al tipo de incidente (gravedad de 1 a 5).
-- Puede pedir el mapa de calor de la IA (`GET /api/v1/ai/heatmap`) como grilla de puntos.
 
 ### HU_014 — Confirmar una alerta
 
@@ -153,34 +139,16 @@ Formato: *Como [rol], quiero [acción], para [beneficio]*. Prioridad con **MoSCo
 - Las notificaciones salen de una cola FIFO y quedan guardadas en la base de datos.
 - El vecino puede marcar cada notificación como leída.
 
-### HU_017 — Mapa de calor predictivo
-
-- El mapa de calor se calcula en el componente de IA con los reportes de los últimos meses.
-- Se calcula el riesgo por barrio, día de la semana y franja de 6 horas.
-- Si la IA no está disponible, la API lo indica y el resto del sistema sigue funcionando.
-
-### HU_018 — Resumen diario
-
-- El resumen se genera por barrio y por día con el componente de IA.
-- Si el proveedor de IA externo falla, se genera con una plantilla y la respuesta lo indica.
-- El resumen indica cuántos reportes tuvo en cuenta.
-
-### HU_019 — Preguntar a Vigía
-
-- Dado un vecino que envía una pregunta a `POST /api/v1/ai/chat`, entonces Vigía responde usando datos reales: ranking de barrios, horas de riesgo y alertas recientes.
-- Si la IA está despertando (Render plan gratis), la app espera hasta 45 segundos y avisa al vecino.
-
 ### HU_020 — Ruta segura
 
 - Dado un vecino que llama `GET /api/v1/routes/safe` con barrio de origen y destino, entonces el sistema devuelve la ruta más segura (Dijkstra con castigo por alertas), la más corta y la de menos saltos (BFS).
-- También puede pedirla en texto a Vigía (`POST /api/v1/ai/route`: "estoy en la universidad, necesito ir al centro").
 - Si no hay conexión entre los barrios, el sistema lo indica.
 
 ### HU_021 — Panel de indicadores
 
-- `GET /api/v1/stats` indica si backend, base de datos e IA están en línea.
-- Devuelve reportes por día de los últimos 14 días, reportes por tipo y el ranking de barrios con más alertas activas.
-- Devuelve las últimas alertas y el resumen de la IA.
+- `GET /health` indica si el backend está en línea y las estructuras cargadas; `GET /api/v1/stats` devuelve los totales por estado, las alertas activas y los pendientes de moderación.
+- Devuelve reportes por día de los últimos 14 días y reportes por tipo; el ranking de barrios con más alertas activas sale de `GET /api/v1/neighborhoods/ranking` (quick sort).
+- Las últimas alertas salen de `GET /api/v1/feed`.
 
 
 ---

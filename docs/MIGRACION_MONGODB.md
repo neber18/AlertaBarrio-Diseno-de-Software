@@ -1,6 +1,6 @@
 # Migración de PostgreSQL a MongoDB
 
-AlertaBarrio empezó con **PostgreSQL + SQLAlchemy** (14 tablas). Esta versión usa **MongoDB 7 + PyMongo** (9 colecciones). Las 40 pruebas del backend pasan contra un MongoDB real y la API no cambió.
+AlertaBarrio empezó con **PostgreSQL + SQLAlchemy** (14 tablas). La migración dejó **MongoDB 7 + PyMongo** con 9 colecciones y la API no cambió. Después se retiró el componente de IA y sus 3 colecciones (`ai_analyses`, `daily_summaries`, `risk_hotspots`), así que hoy son **6 colecciones** y 32 pruebas del backend que pasan contra un MongoDB real.
 
 ## 1. Cómo se pensó el modelo
 
@@ -15,7 +15,8 @@ AlertaBarrio empezó con **PostgreSQL + SQLAlchemy** (14 tablas). Esta versión 
 | `users` + `roles` | `users` |
 | `neighborhoods` + `neighborhood_connections` | `neighborhoods` |
 | `reports` + `report_photos` + `report_status_history` + `report_verifications` | `reports` |
-| `incident_types`, `subscriptions`, `notifications`, `ai_analyses`, `daily_summaries`, `risk_hotspots` | igual |
+| `incident_types`, `subscriptions`, `notifications` | igual |
+| `ai_analyses`, `daily_summaries`, `risk_hotspots` | retiradas junto con la IA |
 | secuencias `SERIAL` | `counters` |
 
 ## 2. Qué cambió en el código (`backend/`)

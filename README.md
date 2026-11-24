@@ -5,7 +5,7 @@
 [![MongoDB 7](https://img.shields.io/badge/MongoDB-7.0-green.svg)](https://www.mongodb.com/)
 [![CI](https://github.com/neber18/AlertaBarrio-Diseno-de-Software/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
 
-Plataforma para que los vecinos de **San Juan de Pasto** **reporten incidentes de seguridad** (robos, hurtos, actividad sospechosa…) y reciban **alertas de su barrio**. Los reportes pasan por moderación, se ordenan por gravedad y una **inteligencia artificial** ayuda a clasificarlos, predecir zonas de riesgo y calcular rutas seguras.
+Plataforma para que los vecinos de **San Juan de Pasto** **reporten incidentes de seguridad** (robos, hurtos, actividad sospechosa…) y reciban **alertas de su barrio**. Los reportes pasan por moderación, se ordenan por gravedad con una **cola de prioridad** y el sistema calcula **rutas seguras** entre barrios con un grafo. Todo funciona con **estructuras de datos implementadas a mano**.
 
 🔗 **[Wiki del proyecto](../../wiki)** · Se usa desde la **API REST** con su documentación interactiva (Swagger) en `/docs`.
 
@@ -13,8 +13,7 @@ Proyecto final de **Diseño de Software** — Universidad Cooperativa de Colombi
 
 ## 🚀 Características principales
 
-- **Reportes geolocalizados** por la API o **escribiéndole a Vigía** (el asistente de IA arma el reporte a partir del texto).
-- **IA** (servicio aparte): clasifica el reporte (Naive Bayes), calcula el riesgo de la zona, mapa de calor (KDE) y resumen diario.
+- **Reportes geolocalizados** por la API; el barrio más cercano sale de las coordenadas.
 - **Moderación con cola de prioridad**: sale primero el reporte más grave; publicar, rechazar y **deshacer**.
 - **Alertas por barrio** en lista y mapa, **confirmación entre vecinos** y **notificaciones** a los suscritos.
 - **Ruta segura** entre barrios con un grafo y Dijkstra.
@@ -26,9 +25,8 @@ Proyecto final de **Diseño de Software** — Universidad Cooperativa de Colombi
 | Carpeta | Qué es | Tecnología |
 |---|---|---|
 | [`backend/`](backend) | API REST, base de datos y **todas las estructuras de datos** | Python + FastAPI + **MongoDB** (PyMongo) |
-| [`ai/`](ai) | Componente de IA independiente | Python + FastAPI |
 | [`docs/`](docs) | Wiki (requisitos, arquitectura 4+1), historias de usuario y diagramas | Markdown + PlantUML |
-| `docker-compose.yml` | MongoDB, mongo-express, backend e IA | Docker |
+| `docker-compose.yml` | MongoDB, mongo-express y backend | Docker |
 | `run.sh` | Levanta todo en local con un comando | Bash |
 
 ## 📋 Requisitos
@@ -46,7 +44,6 @@ docker compose up --build
 ```
 
 - Backend (Swagger): http://localhost:8000/docs
-- IA: http://localhost:8001/docs
 - mongo-express (ver la base): `docker compose --profile tools up mongo-express` → http://localhost:8081
 
 ### Opción 2: con el script
@@ -55,21 +52,16 @@ docker compose up --build
 ./run.sh
 ```
 
-Levanta MongoDB (usa el de tu PC si ya hay uno en el puerto 27017, si no lo levanta con Docker), la IA y el backend.
+Levanta MongoDB (usa el de tu PC si ya hay uno en el puerto 27017, si no lo levanta con Docker), y el backend.
 
 ### Opción 3: paso a paso
 
 ```bash
 docker compose up -d mongodb
 
-# IA (puerto 8001)
-cd ai && python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt && cp .env.example .env
-uvicorn app.main:app --reload --port 8001
-
-# Backend (puerto 8000), en otra terminal
-cd backend && python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt && cp .env.example .env   # MONGODB_URI y AI_SERVICE_URL
+# Backend (puerto 8000)
+cd backend && python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt && cp .env.example .env   # MONGODB_URI
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -104,37 +96,32 @@ curl -s localhost:8000/api/v1/feed -H "Authorization: Bearer $TOKEN"
 ## 1. Arquitectura
 
 ```
- ┌──────────────┐   HTTP/JSON   ┌──────────────────┐   HTTP/JSON   ┌──────────────────┐
- │   Cliente    │ ────────────► │     Backend      │ ────────────► │  Componente IA   │
- │ Swagger/curl │ ◄──────────── │     FastAPI      │ ◄──────────── │     FastAPI      │
- │  /Postman    │               │     (Render)     │               │     (Render)     │
- └──────────────┘               └────────┬─────────┘               └──────────────────┘
+ ┌──────────────┐   HTTP/JSON   ┌──────────────────┐
+ │   Cliente    │ ────────────► │     Backend      │
+ │ Swagger/curl │ ◄──────────── │     FastAPI      │
+ │  /Postman    │               │     (Render)     │
+ └──────────────┘               └────────┬─────────┘
                                          │ PyMongo
                                 ┌────────▼─────────┐
                                 │    MongoDB 7     │
-                                │  9 colecciones   │
+                                │  6 colecciones   │
                                 │ (MongoDB Atlas)  │
                                 └──────────────────┘
 ```
 
 - **MongoDB** es la fuente de verdad: ahí se guarda todo (en producción, un clúster de **MongoDB Atlas**).
 - Al arrancar, el backend carga los datos en memoria dentro de **nuestras propias estructuras de datos** (`AlertEngine`) para responder rápido.
-- La **IA es un servicio aparte**: el backend le pega por HTTP y no sabe qué modelo hay detrás. Si la IA no responde, el backend sigue funcionando sin ella.
 
 ---
 
 ## 2. ¿Qué pasa cuando un vecino reporta algo?
 
-1. El vecino envía el reporte con `POST /api/v1/reports` (tipo, barrio, descripción y coordenadas), o se lo **cuenta a Vigía** por texto: "robaron un celular en la Avenida Santander" y la IA saca el tipo de incidente, el título y la descripción.
+1. El vecino envía el reporte con `POST /api/v1/reports` (tipo, barrio, descripción, coordenadas y foto opcional).
 2. El backend guarda el reporte con estado `created` y lo mete en la **pila** de historial de ese reporte.
-3. El backend le manda el texto a la **IA**, que responde:
-   - qué tipo de incidente cree que es (clasificador **Naive Bayes**) y con qué confianza,
-   - qué tan riesgosa es esa zona en ese día y hora.
-4. Si la IA está muy segura (≥ 70 %) de que es algo **más grave** de lo que marcó el vecino, se usa esa gravedad. Ejemplo: marcó "hurto" pero escribió que fue un robo con pistola.
-5. Se calcula la **prioridad** (gravedad + riesgo de la zona + si tiene foto) y el reporte entra a la **cola de prioridad** de moderación.
-6. El moderador saca siempre **el más grave primero**, lo publica o lo rechaza, y puede **deshacer** (pop de la pila).
-7. Al publicarse, entra al **feed** del barrio (lista enlazada) y se encolan **notificaciones** (cola FIFO) para los vecinos suscritos.
-8. Cuando otros vecinos lo confirman (2 verificaciones por defecto), pasa a `verified`.
+3. Se calcula la **prioridad** (gravedad del tipo de incidente × 20, + 5 si tiene foto) y el reporte entra a la **cola de prioridad** de moderación.
+4. El moderador saca siempre **el más grave primero**, lo publica o lo rechaza, y puede **deshacer** (pop de la pila).
+5. Al publicarse, entra al **feed** del barrio (lista enlazada) y se encolan **notificaciones** (cola FIFO) para los vecinos suscritos.
+6. Cuando otros vecinos lo confirman (2 verificaciones por defecto), pasa a `verified`.
 
 ```
 created ─► in_review ─► published ─► verified
@@ -163,24 +150,9 @@ El estado interno de todas se consulta en vivo con `GET /api/v1/ds/state`.
 
 ---
 
-## 4. Componente de IA
+## 4. Base de datos (MongoDB)
 
-Servicio independiente (como recomendó el profe). Los modelos se cambian **solo con variables de entorno** o en caliente con `POST /api/v1/models/switch`, sin tocar el backend.
-
-| Función | Modelo por defecto | Alternativas |
-|---|---|---|
-| Clasificar el reporte | **Naive Bayes multinomial** hecho a mano con suavizado de Laplace, entrenado con frases típicas de grupos de barrio | `keywords` |
-| Riesgo de la zona | peso = gravedad/5 × 0.5^(edad/vida_media), por barrio, día y franja de 6 h | — |
-| Mapa de calor predictivo | **KDE** (kernel gaussiano sobre grilla 36×36) | `frequency` (histograma 2D) |
-| Resumen diario | `template` (plantilla) | `ollama` (modelos open source locales), `openai_compatible` (Groq, OpenRouter, LM Studio), `anthropic` |
-
-Si un proveedor externo falla, el resumen se genera con la plantilla y la respuesta lo dice. Cada llamada a la IA queda registrada en la colección `ai_analyses` (modelo, latencia, resultado).
-
----
-
-## 5. Base de datos (MongoDB)
-
-**MongoDB 7**: local con Docker y en producción con **MongoDB Atlas**. Las 14 tablas que tenía la versión con PostgreSQL quedaron en **9 colecciones** (+ `counters`).
+**MongoDB 7**: local con Docker y en producción con **MongoDB Atlas**. Las 14 tablas que tenía la versión con PostgreSQL quedaron en **6 colecciones** (+ `counters`).
 
 | Relación en el diagrama de clases | En MongoDB | Ejemplo |
 |---|---|---|
@@ -188,7 +160,7 @@ Si un proveedor externo falla, el resumen se genera con la plantilla y la respue
 | Asociación | **Referencia por id** | el reporte guarda `user_id`, `neighborhood_id`, `incident_type_id` (+ copia de `reporter_name`) |
 | Rol del usuario | **Un campo** | `role: citizen \| moderator \| admin` en `users` |
 
-Colecciones: `users`, `neighborhoods`, `incident_types`, `reports`, `subscriptions`, `notifications`, `ai_analyses`, `daily_summaries`, `risk_hotspots`.
+Colecciones: `users`, `neighborhoods`, `incident_types`, `reports`, `subscriptions`, `notifications`.
 
 Los ids siguen siendo **enteros** gracias a la colección `counters` (incremento atómico con `$inc`), así las URLs y las estructuras de datos no cambiaron. Detalle, diagrama y ejemplos JSON en [`backend/database/README.md`](backend/database/README.md).
 
@@ -198,7 +170,7 @@ Datos de ejemplo: 338 barrios de las 12 comunas de **Pasto**, 8 tipos de inciden
 
 ---
 
-## 6. Endpoints principales del backend
+## 5. Endpoints principales del backend
 
 Documentación interactiva (Swagger) en `/docs` del backend.
 
@@ -206,7 +178,7 @@ Documentación interactiva (Swagger) en `/docs` del backend.
 |---|---|---|
 | POST | `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/change-password` | — (bcrypt + JWT) |
 | GET | `/api/v1/stats` | indicadores generales |
-| POST | `/api/v1/reports` | IA → PriorityQueue + AVL + Stack |
+| POST | `/api/v1/reports` | PriorityQueue + AVL + Stack |
 | GET | `/api/v1/feed?neighborhood_id=` | LinkedList / merge sort |
 | GET | `/api/v1/reports?from=&to=` | AVL (rango por fecha) |
 | GET | `/api/v1/reports/{id}/history` | Stack |
@@ -218,39 +190,34 @@ Documentación interactiva (Swagger) en `/docs` del backend.
 | GET | `/api/v1/routes/safe?from_id=&to_id=` | Graph + Dijkstra + BFS |
 | GET | `/api/v1/neighborhoods/search?name=` | búsqueda binaria |
 | GET | `/api/v1/neighborhoods/ranking` | quick sort |
-| GET | `/api/v1/ai/heatmap`, `/api/v1/ai/daily-summary` | llaman al componente de IA |
+| GET | `/api/v1/neighborhoods/nearest?lat=&lng=` | barrio más cercano a unas coordenadas |
 | GET | `/api/v1/ds/state` | estado de todas las estructuras |
 
 ---
 
-## 7. Variables de entorno
+## 6. Variables de entorno
 
 | Carpeta | Variable | Para qué |
 |---|---|---|
 | backend | `MONGODB_URI` | Conexión a MongoDB (local o Atlas), con el nombre de la base |
-| backend | `AI_SERVICE_URL` | URL del componente de IA |
 | backend | `JWT_SECRET` | Secreto para firmar los tokens |
 | backend | `TEAM_MEMBERS`, `CORS_ORIGINS`, `SEED_ON_STARTUP`, `TIMEZONE`, `VERIFICATIONS_REQUIRED` | Configuración general |
-| ai | `CLASSIFIER_MODEL`, `HEATMAP_MODEL`, `SUMMARY_PROVIDER` | Qué modelo usar ("el switch") |
-| ai | `GEMINI_API_KEY`, `SUMMARY_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, `ADMIN_TOKEN` | Proveedor externo y protección del switch |
 
-## 🧪 8. Pruebas y CI
+## 🧪 7. Pruebas y CI
 
 | Carpeta | Comando | Qué revisa |
 |---|---|---|
-| backend | `pytest` | 40 pruebas: estructuras de datos y API **contra un MongoDB real** |
-| ai | `pytest` | 19 pruebas de los modelos y endpoints |
+| backend | `pytest` | 32 pruebas: estructuras de datos y API **contra un MongoDB real** |
 
-GitHub Actions (`.github/workflows/ci.yml`) corre en cada push: lint (`ruff`), pruebas del backend con un servicio **MongoDB 7**, pruebas de la IA y las imágenes de Docker.
+GitHub Actions (`.github/workflows/ci.yml`) corre en cada push: lint (`ruff`), pruebas del backend con un servicio **MongoDB 7** y la imagen de Docker.
 
-## ☁️ 9. Despliegue
+## ☁️ 8. Despliegue
 
 | Parte | Dónde |
 |---|---|
 | Backend | **Render** (`render.yaml`) + **MongoDB Atlas** (clúster M0 gratis) |
-| IA | **Render** |
 
-Pasos para Atlas y Render en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md). Los planes gratis de Render duermen el servidor tras 15 minutos sin uso; el workflow `keep-alive.yml` le hace ping cada 10 minutos (variables `BACKEND_URL` y `AI_URL` en *Settings → Secrets and variables → Actions → Variables*).
+Pasos para Atlas y Render en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md). Los planes gratis de Render duermen el servidor tras 15 minutos sin uso; el workflow `keep-alive.yml` le hace ping cada 10 minutos (variable `BACKEND_URL` en *Settings → Secrets and variables → Actions → Variables*).
 
 ## 👤 Autor
 

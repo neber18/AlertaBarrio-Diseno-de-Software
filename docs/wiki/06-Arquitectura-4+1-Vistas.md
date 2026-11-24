@@ -12,11 +12,14 @@ La arquitectura de AlertaBarrio se documenta con el modelo de **4+1 vistas** de 
 
 AlertaBarrio como caja negra y los flujos de información con su entorno.
 
-| Actor / sistema externo | Hacia AlertaBarrio | Desde AlertaBarrio |
-|-------------------------|--------------------|--------------------|
-| Vecinos (desde un cliente HTTP) | Reportes con coordenadas, confirmaciones, barrios a seguir, preguntas a Vigía | Alertas del barrio, notificaciones, mapa de calor, ruta segura |
-| Moderadores / Administradores | Publicar, rechazar y deshacer | Cola de reportes por prioridad, estadísticas |
-| Componente de IA | Clasificación, riesgo de zona, mapa de calor, resumen, respuestas | Texto del reporte, historial del barrio, preguntas |
+| Actor | Hacia AlertaBarrio | Desde AlertaBarrio |
+|-------|--------------------|--------------------|
+| Visitante (sin sesión) | Datos de registro, consultas públicas | Cuenta + token JWT, alertas públicas, ranking de barrios, ruta segura, estado del sistema |
+| Vecino (rol citizen) | Credenciales y código 2FA, reportes con coordenadas y foto, confirmaciones, barrios a seguir, origen y destino | Token JWT, historial de sus reportes, posición en la cola, alertas del barrio, notificaciones, ruta segura |
+| Moderador (rol moderator) | Tomar siguiente, publicar o rechazar con nota, deshacer | Cola de reportes por prioridad, reportes en revisión |
+| Administrador (rol admin) | Moderación, despacho de notificaciones | Estadísticas y estado de las estructuras de datos |
+
+Todos los actores llegan a AlertaBarrio desde un cliente HTTP (Swagger UI, Postman o `curl`).
 
 ---
 
@@ -26,14 +29,17 @@ AlertaBarrio como caja negra y los flujos de información con su entorno.
 
 | Nº | Componente | Responsabilidad | Interfaz que ofrece |
 |----|------------|-----------------|---------------------|
-| 1 | Gestión de Reportes | Recibir reportes, cola de prioridad, cambios de estado, feed y confirmaciones | recibir reporte (puerto de servicio); moderar reportes (puerto de gestión) |
-| 2 | Autenticación y Seguridad | Registro, JWT, roles, bloqueo por intentos, 2FA | validar acceso |
-| 3 | Componente de IA (Vigía) | Clasificar, riesgo de zona, mapa de calor, resumen, borrador y chat | analizar reporte |
-| 4 | Notificaciones | Suscripciones por barrio y cola FIFO de avisos | enviar notificación |
-| 5 | Rutas Seguras | Grafo de barrios con Dijkstra y BFS | calcular ruta |
+| 1 | Gestión de Reportes | Recibir reportes, cambios de estado, feed y confirmaciones | recibir reporte (puerto de servicio), consultar alertas, moderar reportes (puerto de gestión) |
+| 2 | Autenticación y Seguridad | Registro, JWT, roles, bloqueo por intentos, 2FA | iniciar sesión, validar acceso |
+| 3 | Notificaciones | Suscripciones por barrio y cola FIFO de avisos | enviar notificación, gestionar suscripciones |
+| 4 | Rutas Seguras | Grafo de barrios con Dijkstra y BFS | calcular ruta |
+| 5 | Catálogo de Barrios | Barrios, tipos de incidente, búsqueda binaria, barrio más cercano y ranking | consultar barrios |
+| 6 | Motor de Alertas | Estructuras en memoria: cola de prioridad, pilas, feeds, AVL, grafo | ordenar en memoria |
+| 7 | Persistencia MongoDB | Guardar y leer documentos, ids con `counters`, índices | guardar documentos |
 
-- **Puerto de servicio** de Gestión de Reportes: por ahí usa *validar acceso*, *analizar reporte* y *enviar notificación*.
-- **Puerto de gestión:** lo usa el Moderador («use») para *moderar reportes*.
+- **Gestión de Reportes requiere:** validar acceso, enviar notificación, consultar barrios, ordenar en memoria y guardar documentos.
+- **Rutas Seguras requiere** consultar barrios; **Notificaciones** requiere ordenar en memoria y guardar documentos; **Autenticación** requiere guardar documentos.
+- **Actores («use»):** Visitante → iniciar sesión, consultar alertas, calcular ruta; Vecino → recibir reporte, gestionar suscripciones; Moderador → moderar reportes (puerto de gestión).
 
 ---
 
@@ -41,23 +47,20 @@ AlertaBarrio como caja negra y los flujos de información con su entorno.
 
 ![Vista Logica](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Logica_AlertaBarrio.png)
 
-Diagrama de clases del dominio. Cada clase lleva el estereotipo **«document»** (tiene colección propia en MongoDB) o **«embedded»** (se guarda dentro de otro documento).
+Diagrama de clases con dos partes: abajo el **dominio** guardado en MongoDB y arriba el **motor de alertas** en memoria. Cada clase del dominio lleva el estereotipo **«document»** (tiene colección propia en MongoDB) o **«embedded»** (se guarda dentro de otro documento).
 
 | Clase | Estereotipo (colección) | Atributos principales | Métodos / comportamiento |
 |-------|-------------------------|-----------------------|--------------------------|
-| Usuario | «document» (`users`) | id, nombreCompleto, email, passwordHash, telefono, rol, activo, totpActivo | iniciarSesion(), cambiarPassword(), activar2FA() |
+| Usuario | «document» (`users`) | id, nombreCompleto, email, passwordHash, telefono, rol, activo, totpActivo, tokenVersion, fechaCreacion, ultimoIngreso | iniciarSesion(), cambiarPassword(), activar2FA() |
 | Barrio | «document» (`neighborhoods`) | id, nombre, ciudad, comuna, latitud, longitud, vias[] | — |
 | Via | «embedded» (en Barrio) | barrioDestinoId, distanciaMetros, nombreVia | — |
 | TipoIncidente | «document» (`incident_types`) | codigo, nombre, gravedad (1–5), color | — |
-| Reporte | «document» (`reports`) | id, titulo, descripcion, latitud, longitud, direccion, fechaOcurrencia, estado, prioridad, confianzaIA, riesgoZonaIA, nombreVecino | cambiarEstado(), deshacer(), verificar() |
+| Reporte | «document» (`reports`) | id, titulo, descripcion, latitud, longitud, direccion, fechaOcurrencia, estado, prioridad, nombreVecino, fechaCreacion, fechaActualizacion | cambiarEstado(), deshacer(), verificar() |
 | FotoReporte | «embedded» (en Reporte) | url, fecha | — |
-| CambioEstado | «embedded» (en Reporte) | id, estadoAnterior, estadoNuevo, nota, fecha | — |
-| Verificacion | «embedded» (en Reporte) | usuarioId, confirmado, comentario | — |
+| CambioEstado | «embedded» (en Reporte) | id, estadoAnterior, estadoNuevo, cambiadoPor, nota, fecha | — |
+| Verificacion | «embedded» (en Reporte) | usuarioId, confirmado, comentario, fecha | — |
 | Suscripcion | «document» (`subscriptions`) | usuarioId, barrioId, fecha | — |
 | Notificacion | «document» (`notifications`) | mensaje, leida, fecha | marcarLeida() |
-| AnalisisIA | «document» (`ai_analyses`) | tipo, modelo, latenciaMs, resultado | — |
-| ResumenDiario | «document» (`daily_summaries`) | fecha, texto, cantidadReportes, modelo | — |
-| ZonaRiesgo | «document» (`risk_hotspots`) | diaSemana, franjaHoraria, riesgo | — |
 
 **Cómo se pasaron las relaciones a MongoDB:**
 
@@ -65,7 +68,7 @@ Diagrama de clases del dominio. Cada clase lleva el estereotipo **«document»**
 |-------------------------|------------|---------|
 | **Composición** (rombo relleno) | Documento **embebido** | *Reporte* contiene *FotoReporte*, *CambioEstado* (la pila de estados) y *Verificacion*; *Barrio* contiene sus *Via* |
 | **Asociación** | **Referencia por id** (+ copia del nombre si se muestra mucho) | *Reporte* guarda `user_id`, `neighborhood_id`, `incident_type_id` y `reporter_name` |
-| **Rol** | Un campo con valor fijo | `rol`: citizen, moderator o admin (antes una tabla aparte) |
+| **Rol** | Un campo con valor fijo | `rol`: VECINO, MODERADOR o ADMINISTRADOR (en MongoDB: citizen, moderator, admin) |
 
 - Los **ids son enteros** (1, 2, 3…), generados con la colección `counters`, para no cambiar las URLs de la API ni las estructuras de datos.
 - Las clases embebidas no tienen colección ni id propio (salvo *CambioEstado*, que guarda un id para poder deshacer exactamente ese cambio).
@@ -78,15 +81,18 @@ Diagrama de clases del dominio. Cada clase lleva el estereotipo **«document»**
 
 ![Vista de Desarrollo](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Desarrollo_AlertaBarrio.png)
 
-| Capa / repositorio | Módulos |
-|--------------------|---------|
-| Interfaz — API REST | Swagger UI generado por FastAPI en `/docs`; lo consumen Postman, `curl` o cualquier cliente futuro |
-| Lógica de negocio — `alertabarrio-backend/app` | `main.py`, `routers/` (auth, reports, moderation, notifications, routes, ai, catalog, general), `services/` (engine, report_service, ai_client, geo), `security.py`, `schemas.py` |
-| Estructuras de datos — `app/structures` | dynamic_array, linked_list, stack, queue, priority_queue, hash_table, bst (AVL), graph, sorting |
-| Persistencia | `models.py` (documentos «document» / «embedded»), `database.py` (PyMongo, contadores de ids e índices), `seed.py` → **MongoDB 7** (local con Docker, producción en MongoDB Atlas) |
-| Servicio externo — `alertabarrio-ai` | API de IA (clasificador, riesgo, KDE, resúmenes) |
+| Paquete / capa | Módulos (nombre en el diagrama → archivo) |
+|----------------|-------------------------------------------|
+| Cliente (fuera del repositorio) | ClienteHTTP: Swagger UI en `/docs`, Postman o `curl` |
+| `backend/` — Capa de presentación (API) | Aplicacion → `main.py`, Controladores → `routers/` (auth, reports, moderation, notifications, routes, catalog, general), Esquemas → `schemas.py`, Serializadores → `serializers.py` |
+| `backend/` — Capa de negocio | Seguridad → `security.py`, Servicios → `services/` (engine = MotorAlertas, report_service, geo), EstructurasDeDatos → `structures/` |
+| `backend/` — Capa de persistencia | Modelos → `models.py`, AccesoDatos → `database.py`, DatosIniciales → `seed.py` |
+| `backend/` — transversales | Configuracion → `config.py`, PruebasBackend → `tests/` |
+| Base de datos | **MongoDB 7** (local con Docker, producción en MongoDB Atlas): 6 colecciones + `counters` |
+| Infraestructura | `docker-compose.yml`, `Dockerfile`, `.github/workflows` (ci, keep-alive), `render.yaml`, `run.sh` |
+| `docs/` | wiki, historias de usuario (issues) y diagramas |
 
-Los clientes solo hablan con el backend por HTTP/JSON. Los routers delegan en `services`, que usan `structures` y `models`. Solo `database.py` y `models.py` hablan con MongoDB, y solo `ai_client` habla con el componente de IA.
+Los clientes solo hablan con el backend por HTTP/JSON. Los controladores delegan en los servicios, que usan las estructuras de datos y los modelos. Solo `database.py` y `models.py` hablan con MongoDB.
 
 ---
 
@@ -94,18 +100,18 @@ Los clientes solo hablan con el backend por HTTP/JSON. Los routers delegan en `s
 
 ![Vista de Despliegue](https://raw.githubusercontent.com/neber18/AlertaBarrio-Diseno-de-Software/main/docs/diagramas/Vista_Despliegue_AlertaBarrio.png)
 
-| Nodo | Ambiente | Artefacto | Conexión |
-|------|----------|-----------|----------|
-| Cliente | Navegador (Swagger UI), Postman o `curl` | — | HTTPS/JSON → Render |
-| Render — servicio web | Docker, Python 3.11 | `alertabarrio-backend` (FastAPI + uvicorn) | HTTP/JSON → IA · MongoDB / TCP 27017 (TLS) → Atlas |
-| Render — servicio web | Docker, Python 3.11 | `alertabarrio-ai` (FastAPI) | — |
-| MongoDB Atlas — clúster M0 (AWS) | MongoDB 7 | 9 colecciones del sistema | — |
+| Nodo | Ambiente | Artefactos | Conexión |
+|------|----------|------------|----------|
+| PC / celular del usuario | Navegador (Swagger UI), Postman o `curl` | Cliente HTTP; app autenticadora (códigos TOTP) | HTTPS 443 / JSON → Render |
+| Render — servicio web `alertabarrio-backend` | Contenedor Docker, `python:3.11-slim` | backend (FastAPI + uvicorn, puerto `$PORT`); MotorAlertas en memoria | MongoDB / TCP 27017 (TLS) → Atlas |
+| MongoDB Atlas — clúster M0 (AWS) | Replica set, MongoDB 7 | base `alertabarrio`: 6 colecciones + `counters` | — |
+| GitHub | Repositorio + Actions | `ci.yml` (pruebas e imagen Docker), `keep-alive.yml` (ping cada 10 min) | HTTPS → Render (deploy hook y ping) |
 
 ---
 
 ## +1. Escenarios
 
-- **HU_005 / HU_007 — Reportar un incidente:** Vecino → `POST /api/v1/reports` → guarda en BD (created) → Componente de IA clasifica y calcula riesgo → se calcula la prioridad → entra a la cola de moderación.
+- **HU_005 — Reportar un incidente:** Vecino → `POST /api/v1/reports` → `report_service.create_report()` guarda en BD (created) → prioridad = gravedad × 20 (+5 con foto) → entra a la cola de prioridad de moderación.
 - **HU_009 / HU_010 — Publicar una alerta:** Moderador → `POST /api/v1/moderation/next` → toma el reporte más grave del heap → publica → feed del barrio + cola de notificaciones → vecinos suscritos.
 - **HU_014 — Confirmar una alerta:** Vecino → `POST /api/v1/reports/{id}/verify` → `$push` atómico a `reports.verifications` solo si el vecino no estaba → con 2 confirmaciones pasa a *verified*.
 - **HU_020 — Ruta segura:** Vecino → `GET /api/v1/routes/safe` → grafo de barrios + Dijkstra con castigo por alertas.

@@ -9,20 +9,16 @@ rectangle "Vecino\n(rol citizen)" as V
 circle "AlertaBarrio\n(API REST)" as S
 rectangle "Moderador\n(rol moderator)" as M
 rectangle "Administrador\n(rol admin)" as AD
-rectangle "Componente de IA\n(alertabarrio-ai)" as IA
 
 VI --> S : Datos de registro,\nconsultas públicas
-S --> VI : Cuenta + token JWT, alertas públicas,\nranking de barrios, estado del sistema
+S --> VI : Cuenta + token JWT, alertas públicas,\nranking de barrios, ruta segura,\nestado del sistema
 
-V --> S : Credenciales y código 2FA,\nreportes (coordenadas, foto),\nconfirmaciones, barrios a seguir,\npreguntas a Vigía, origen y destino
-S --> V : Token JWT, historial de sus reportes,\nalertas del barrio, notificaciones,\nmapa de calor, resumen diario,\nruta segura, respuestas de Vigía
+V --> S : Credenciales y código 2FA,\nreportes (coordenadas, foto),\nconfirmaciones, barrios a seguir,\norigen y destino
+S --> V : Token JWT, historial de sus reportes,\nposición en la cola, alertas del barrio,\nnotificaciones, ruta segura
 
-S --> M : Cola de reportes por prioridad,\nreportes en revisión, análisis de la IA
+S --> M : Cola de reportes por prioridad,\nreportes en revisión
 M --> S : Tomar siguiente, publicar o\nrechazar con nota, deshacer
 
-S --> AD : Estadísticas, estado de las\nestructuras de datos y de la IA
+S --> AD : Estadísticas y estado de las\nestructuras de datos
 AD --> S : Moderación, despacho\nde notificaciones
-
-S --> IA : Texto del reporte, historial del barrio,\nreportes para el mapa de calor,\ndatos del día, preguntas, pedidos de ruta
-IA --> S : Tipo sugerido y confianza, riesgo de zona,\nmapa de calor (KDE), resumen diario,\nborrador de reporte, origen/destino, respuestas
 @enduml

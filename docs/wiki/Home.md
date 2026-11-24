@@ -47,9 +47,9 @@ Este documento describe:
 | Nombre | AlertaBarrio |
 | Ciudad | San Juan de Pasto, Nariño |
 | Problema | Los vecinos se enteran de los robos y riesgos de su barrio tarde y por rumores en grupos de chat, sin saber si son ciertos |
-| Solución | Reportes geolocalizados y moderados, alertas por barrio, confirmación entre vecinos, mapa de calor y ruta segura con IA |
+| Solución | Reportes geolocalizados y moderados, alertas por barrio, confirmación entre vecinos, notificaciones y ruta segura con grafos (Dijkstra) |
 | Usuarios | Vecinos, Moderadores, Administradores |
 | Cómo se usa | API REST con Swagger en `/docs` (sin interfaz gráfica) |
-| Tecnología | Python + FastAPI (backend e IA), **MongoDB 7 en MongoDB Atlas** |
-| Código | Carpetas `backend/` y `ai/` de este repositorio |
-| Historias de usuario | 21 (ver *Issues* HU_001 a HU_021) |
+| Tecnología | Python + FastAPI (backend), **MongoDB 7 en MongoDB Atlas** |
+| Código | Carpeta `backend/` de este repositorio |
+| Historias de usuario | 16 activas (ver *Issues*; HU_006, HU_007, HU_017, HU_018 y HU_019 se retiraron con la IA) |

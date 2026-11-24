@@ -13,7 +13,7 @@ package "backend/ (FastAPI + PyMongo)" {
     }
     class Controladores <<routers/>> {
       auth, reports, moderation
-      notifications, routes, ai
+      notifications, routes
       catalog, general
     }
     class Esquemas <<schemas.py>> {
@@ -28,7 +28,7 @@ package "backend/ (FastAPI + PyMongo)" {
     }
     class Servicios <<services/>> {
       engine (MotorAlertas)
-      report_service, ai_client, geo
+      report_service, geo
     }
     class EstructurasDeDatos <<structures/>> {
       dynamic_array, linked_list
@@ -58,32 +58,12 @@ package "backend/ (FastAPI + PyMongo)" {
   }
 }
 
-package "ai/ (FastAPI)" {
-  class AplicacionIA <<main.py>> {
-    /analyze-report, /heatmap
-    /summary, /chat
-    /interpret-report, /interpret-route
-  }
-  class ModelosIA <<models/>> {
-    classifier (Naive Bayes)
-    risk (KDE, frecuencia)
-    training_data
-  }
-  class ProveedoresIA <<providers/>> {
-    summary (Gemini, Ollama,
-    OpenAI-compatible, Anthropic, plantilla)
-    interpret
-  }
-  class ConfiguracionIA <<config.py>>
-  class PruebasIA <<tests/>>
-}
-
 package "Infraestructura" {
   class Contenedores <<docker-compose.yml>> {
     mongodb, mongo-express
-    backend, ai
+    backend
   }
-  class ImagenesDocker <<Dockerfile x2>>
+  class ImagenesDocker <<Dockerfile>>
   class FlujosCI <<.github/workflows>> {
     ci.yml, keep-alive.yml
   }
@@ -100,9 +80,8 @@ package "docs/" {
 package "Base de datos" {
   class BaseMongo <<MongoDB 7 / Atlas>> {
     users, neighborhoods, incident_types
-    reports, subscriptions, notifications
-    ai_analyses, daily_summaries
-    risk_hotspots, counters
+    reports, subscriptions
+    notifications, counters
   }
 }
 
@@ -119,13 +98,7 @@ Seguridad ..> Modelos
 Modelos ..> AccesoDatos
 DatosIniciales ..> Modelos
 AccesoDatos ..> BaseMongo : PyMongo / TCP 27017
-Servicios ..> AplicacionIA : HTTP/JSON (ai_client)
-AplicacionIA ..> ModelosIA
-AplicacionIA ..> ProveedoresIA
-AplicacionIA ..> ConfiguracionIA
 PruebasBackend ..> Controladores
-PruebasIA ..> AplicacionIA
 Contenedores ..> ImagenesDocker
 FlujosCI ..> PruebasBackend
-FlujosCI ..> PruebasIA
 @enduml

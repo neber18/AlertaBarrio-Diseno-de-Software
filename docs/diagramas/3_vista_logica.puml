@@ -54,8 +54,6 @@ class Reporte <<document>> {
   +fechaOcurrencia : DateTime
   +estado : EstadoReporte
   +prioridad : double
-  +confianzaIA : double
-  +riesgoZonaIA : double
   +nombreVecino : String
   +fechaCreacion : DateTime
   +fechaActualizacion : DateTime
@@ -97,33 +95,12 @@ class Notificacion <<document>> {
   +fecha : DateTime
   +marcarLeida()
 }
-class AnalisisIA <<document>> {
-  +tipo : String
-  +modelo : String
-  +latenciaMs : int
-  +resultado : JSON
-  +fecha : DateTime
-}
-class ResumenDiario <<document>> {
-  +fecha : String
-  +texto : String
-  +cantidadReportes : int
-  +modelo : String
-}
-class ZonaRiesgo <<document>> {
-  +diaSemana : int
-  +franjaHoraria : int
-  +riesgo : double
-  +modelo : String
-  +fechaGeneracion : DateTime
-}
 
 Usuario --> Rol
 Usuario "*" --> "0..1" Barrio : vive en
 Usuario "1" -- "*" Reporte : crea >
 Reporte "*" --> "1" Barrio : ocurre en
 Reporte "*" --> "1" TipoIncidente : tipo
-Reporte "*" --> "0..1" TipoIncidente : sugerido por IA
 Reporte --> EstadoReporte
 Reporte "1" *-- "*" FotoReporte : embebido
 Reporte "1" *-- "1..*" CambioEstado : embebido (pila)
@@ -135,10 +112,6 @@ Usuario "1" -- "*" Suscripcion
 Suscripcion "*" --> "1" Barrio
 Notificacion "*" --> "1" Usuario
 Notificacion "*" --> "0..1" Reporte
-ResumenDiario "*" --> "1" Barrio
-ZonaRiesgo "*" --> "1" Barrio
-AnalisisIA "*" --> "0..1" Reporte
-AnalisisIA "*" --> "0..1" Barrio
 
 ' ===== Motor de alertas en memoria (estructuras de datos propias)
 class MotorAlertas {

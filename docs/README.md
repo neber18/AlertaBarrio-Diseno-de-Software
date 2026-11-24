@@ -3,7 +3,7 @@
 | Carpeta / archivo | Contenido |
 |-------------------|-----------|
 | [`wiki/`](wiki) | Páginas de la wiki de GitHub: Hogar, 01 a 07 y barra lateral |
-| [`issues/`](issues) | Historias de usuario HU_001 a HU_021, una por archivo, para crear como *Issues* |
+| [`issues/`](issues) | Las 16 historias de usuario activas (HU_001 a HU_021, sin las 5 que dependían de la IA), una por archivo |
 | [`diagramas/`](diagramas) | PlantUML e imágenes de referencia de las vistas 4+1 (+ despliegue). Los definitivos se hacen en Visual Paradigm |
 | [`DESPLIEGUE.md`](DESPLIEGUE.md) | MongoDB Atlas + Render paso a paso |
 | [`MIGRACION_MONGODB.md`](MIGRACION_MONGODB.md) | Qué cambió al pasar de PostgreSQL a MongoDB |

@@ -8,18 +8,15 @@ actor Vecino
 actor Moderador
 
 component "<<component>>\nAutenticación y Seguridad\n(2)" as Auth
-component "<<component>>\nComponente de IA - Vigía\n(3)" as IA
-component "<<component>>\nNotificaciones\n(4)" as Notif
-component "<<component>>\nCatálogo de Barrios\n(6)" as Cat
-component "<<component>>\nMotor de Alertas\n(7)" as Eng
-component "<<component>>\nPersistencia MongoDB\n(8)" as Per
-component "<<component>>\nRutas Seguras\n(5)" as Rutas
+component "<<component>>\nNotificaciones\n(3)" as Notif
+component "<<component>>\nCatálogo de Barrios\n(5)" as Cat
+component "<<component>>\nMotor de Alertas\n(6)" as Eng
+component "<<component>>\nPersistencia MongoDB\n(7)" as Per
+component "<<component>>\nRutas Seguras\n(4)" as Rutas
 component "<<component>>\nGestión de Reportes\n(1)" as Rep
 
 () "iniciar sesión" as A0
 () "validar acceso" as A1
-() "analizar reporte" as I1
-() "conversar con Vigía" as I2
 () "enviar notificación" as N1
 () "gestionar suscripciones" as N2
 () "consultar barrios" as C1
@@ -32,8 +29,6 @@ component "<<component>>\nGestión de Reportes\n(1)" as Rep
 
 Auth -- A0
 Auth -- A1
-IA -- I1
-IA -- I2
 Notif -- N1
 Notif -- N2
 Cat -- C1
@@ -45,7 +40,6 @@ Rep -- S2
 Rep -- S3
 
 A1 )-- Rep : requiere
-I1 )-- Rep : requiere
 N1 )-- Rep : requiere
 C1 )-- Rep : requiere
 E1 )-- Rep : requiere
@@ -60,6 +54,5 @@ Visitante ..> S2 : <<use>>
 Visitante ..> R1 : <<use>>
 Vecino ..> S1 : <<use>>
 Vecino ..> N2 : <<use>>
-Vecino ..> I2 : <<use>>
 Moderador ..> S3 : <<use>>
 @enduml
