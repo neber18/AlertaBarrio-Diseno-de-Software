@@ -107,11 +107,18 @@ Diagrama de clases con dos partes: abajo el **dominio** guardado en MongoDB y ar
 | `backend/` — Capa de negocio | Seguridad → `security.py`, Servicios → `services/` (engine = MotorAlertas, report_service, geo), EstructurasDeDatos → `structures/` |
 | `backend/` — Capa de persistencia | Modelos → `models.py`, AccesoDatos → `database.py`, DatosIniciales → `seed.py` |
 | `backend/` — transversales | Configuracion → `config.py`, PruebasBackend → `tests/` |
+| `backend/database/` | DocumentacionBD: `README.md`, ejemplos JSON (barrio, reporte, usuario) y `modelo_documentos.puml` / `.png` |
 | Base de datos | **MongoDB 7** (local con Docker, producción en MongoDB Atlas): 6 colecciones + `counters` |
-| Infraestructura | `docker-compose.yml`, `Dockerfile`, `.github/workflows` (ci, keep-alive), `render.yaml`, `run.sh` |
-| `docs/` | wiki, historias de usuario (issues) y diagramas |
+| Infraestructura | `docker-compose.yml`, `Dockerfile`, `.github/workflows` (ci, keep-alive), `render.yaml`, `run.sh`, `.devcontainer/` |
+| `docs/` | wiki, 16 historias de usuario activas en `issues/` (HU_006, 007, 017, 018 y 019 retiradas) y diagramas |
 
 Los clientes solo hablan con el backend por HTTP/JSON. Los controladores delegan en los servicios, que usan las estructuras de datos y los modelos. Solo `database.py` y `models.py` hablan con MongoDB.
+
+**Dependencias que muestra el diagrama:**
+- `main.py` al arrancar (`lifespan`): `init_db()` de `seed.py`, `get_database()` de `database.py` y `engine.load()` del motor.
+- Los controladores usan `get_db()` y también leen modelos directamente (por ejemplo `reports.py`, `notifications.py`, `catalog.py`).
+- `config.py` (variables de entorno) lo usan `main.py`, `security.py`, `database.py`, `report_service.py`, `seed.py` y algunos routers.
+- `run.sh` levanta MongoDB con `docker compose`; `render.yaml` y el CI construyen la imagen con el `Dockerfile`.
 
 ---
 

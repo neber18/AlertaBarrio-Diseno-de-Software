@@ -56,6 +56,14 @@ package "backend/ (FastAPI + PyMongo)" {
   class PruebasBackend <<tests/>> {
     test_api, test_structures
   }
+  package "database/" {
+    class DocumentacionBD <<database/>> {
+      README.md
+      ejemplo_barrio.json, ejemplo_reporte.json
+      ejemplo_usuario.json
+      modelo_documentos.puml / .png
+    }
+  }
 }
 
 package "Infraestructura" {
@@ -69,11 +77,17 @@ package "Infraestructura" {
   }
   class DespliegueRender <<render.yaml>>
   class ScriptArranque <<run.sh>>
+  class EntornoDesarrollo <<.devcontainer/>> {
+    devcontainer.json
+  }
 }
 
 package "docs/" {
   class Wiki <<wiki/>>
-  class HistoriasUsuario <<issues/ HU_001..HU_021>>
+  class HistoriasUsuario <<issues/>> {
+    16 historias activas
+    (HU_006, 007, 017, 018 y 019 retiradas)
+  }
   class Diagramas <<diagramas/>>
 }
 
@@ -88,17 +102,31 @@ package "Base de datos" {
 ClienteHTTP ..> Aplicacion : HTTP/JSON
 Aplicacion ..> Controladores
 Aplicacion ..> Configuracion
+Aplicacion ..> DatosIniciales : init_db()
+Aplicacion ..> AccesoDatos : get_database()
+Aplicacion ..> Servicios : engine.load()
 Controladores ..> Esquemas
 Controladores ..> Serializadores
 Controladores ..> Seguridad
 Controladores ..> Servicios
+Controladores ..> Modelos
+Controladores ..> AccesoDatos : get_db()
+Controladores ..> Configuracion
 Servicios ..> EstructurasDeDatos
 Servicios ..> Modelos
 Seguridad ..> Modelos
+Seguridad ..> Configuracion
+Servicios ..> Configuracion
+AccesoDatos ..> Configuracion
+DatosIniciales ..> Configuracion
 Modelos ..> AccesoDatos
 DatosIniciales ..> Modelos
 AccesoDatos ..> BaseMongo : PyMongo / TCP 27017
 PruebasBackend ..> Controladores
 Contenedores ..> ImagenesDocker
 FlujosCI ..> PruebasBackend
+FlujosCI ..> ImagenesDocker : docker build
+DespliegueRender ..> ImagenesDocker : runtime docker
+ScriptArranque ..> Contenedores : docker compose up mongodb
+DocumentacionBD ..> Modelos : documenta
 @enduml
