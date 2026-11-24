@@ -62,16 +62,16 @@ Diagrama de clases con dos partes: abajo el **dominio** guardado en MongoDB y ar
 
 | Clase | Estereotipo (colección) | Atributos principales | Métodos / comportamiento |
 |-------|-------------------------|-----------------------|--------------------------|
-| Usuario | «document» (`users`) | id, nombreCompleto, email, passwordHash, telefono, rol, activo, totpActivo, tokenVersion, fechaCreacion, ultimoIngreso | iniciarSesion(), cambiarPassword(), activar2FA() |
+| Usuario | «document» (`users`) | id, nombreCompleto, email, passwordHash, telefono, rol, activo, totpActivo, tokenVersion, fechaCreacion, ultimoIngreso | buscarPorCorreo() (estático) |
 | Barrio | «document» (`neighborhoods`) | id, nombre, ciudad, comuna, latitud, longitud, vias[] | — |
 | Via | «embedded» (en Barrio) | barrioDestinoId, distanciaMetros, nombreVia | — |
 | TipoIncidente | «document» (`incident_types`) | codigo, nombre, gravedad (1–5), color | — |
-| Reporte | «document» (`reports`) | id, titulo, descripcion, latitud, longitud, direccion, fechaOcurrencia, estado, prioridad, nombreVecino, fechaCreacion, fechaActualizacion | cambiarEstado(), deshacer(), verificar() |
+| Reporte | «document» (`reports`) | id, titulo, descripcion, latitud, longitud, direccion, fechaOcurrencia, estado, prioridad, nombreVecino, fechaCreacion, fechaActualizacion | confirmaciones(), guardar() |
 | FotoReporte | «embedded» (en Reporte) | url, fecha | — |
 | CambioEstado | «embedded» (en Reporte) | id, estadoAnterior, estadoNuevo, cambiadoPor, nota, fecha | — |
 | Verificacion | «embedded» (en Reporte) | usuarioId, confirmado, comentario, fecha | — |
 | Suscripcion | «document» (`subscriptions`) | usuarioId, barrioId, fecha | — |
-| Notificacion | «document» (`notifications`) | mensaje, leida, fecha | marcarLeida() |
+| Notificacion | «document» (`notifications`) | mensaje, leida, fecha; destinatario (Usuario) y reporte | — |
 
 **Cómo se pasaron las relaciones a MongoDB:**
 
@@ -82,9 +82,17 @@ Diagrama de clases con dos partes: abajo el **dominio** guardado en MongoDB y ar
 | **Rol** | Un campo con valor fijo | `rol`: VECINO, MODERADOR o ADMINISTRADOR (en MongoDB: citizen, moderator, admin) |
 
 - Los **ids son enteros** (1, 2, 3…), generados con la colección `counters`, para no cambiar las URLs de la API ni las estructuras de datos.
+- La colección `counters` guarda el último id usado por cada colección; `next_id()` lo sube con `$inc` atómico.
 - Las clases embebidas no tienen colección ni id propio (salvo *CambioEstado*, que guarda un id para poder deshacer exactamente ese cambio).
 
-**Motor de alertas (mismo diagrama, parte de arriba):** al arrancar, el backend carga los datos en *MotorAlertas* (`AlertEngine` en el código), que usa las estructuras propias: ColaPrioridad (heap), Pila, Cola, ListaEnlazada, TablaHash, ArbolAVL, Grafo y ArregloDinamico. *ElementoReporte* se crea desde *Reporte*, *EntradaEstado* desde *CambioEstado* y cada *NotificacionPendiente* se guarda como *Notificacion*. Los diagramas usan nombres en español; la nota del diagrama indica el nombre de cada clase en el código.
+**Dónde vive el comportamiento:** los cambios de estado, publicar, deshacer y despachar notificaciones no son métodos de *Reporte*: están en **ServicioReportes** (`report_service.py`). El hash de contraseñas, el JWT, el TOTP, el bloqueo por intentos (`LoginThrottle`) y el límite de solicitudes (`RateLimiter`) están en **Seguridad** (`security.py`). En el código son módulos de funciones; en el diagrama aparecen como clases con estereotipo «módulo».
+
+| Clase | Módulo | Operaciones |
+|-------|--------|-------------|
+| ServicioReportes | `services/report_service.py` | crearReporte, cambiarEstado, publicar, deshacer, despacharNotificaciones, obtenerReporteO404 |
+| Seguridad | `security.py` | hashPassword, verificarPassword, validarFortaleza, crearToken, usuarioActual, requerirModerador, nuevoSecretoTOTP, verificarTOTP |
+
+**Motor de alertas (mismo diagrama, parte de arriba):** al arrancar, el backend carga los datos en *MotorAlertas* (`AlertEngine` en el código), que usa las estructuras propias: ColaPrioridad (heap), Pila, Cola, ListaEnlazada, TablaHash, ArbolAVL, Grafo y ArregloDinamico. *ElementoReporte* se crea desde *Reporte*, *EntradaEstado* desde *CambioEstado* y cada *NotificacionPendiente* se guarda como *Notificacion*. Además de cargar, agregar y tomar el siguiente, el motor tiene: obtenerElemento, ordenCola, tomarEspecifico, reencolar, pilaEstado, despublicar, conteoPorZona, severidadPorZona, desuscribir, cantidadSuscriptores y vaciarNotificaciones; guarda `despachadasTotal` y un `RLock` para que las peticiones simultáneas no choquen. Los diagramas usan nombres en español; la nota del diagrama indica el nombre de cada clase en el código.
 
 ---
 

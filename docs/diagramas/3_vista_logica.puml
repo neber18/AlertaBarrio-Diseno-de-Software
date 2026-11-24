@@ -14,9 +14,7 @@ class Usuario <<document>> {
   +tokenVersion : int
   +fechaCreacion : DateTime
   +ultimoIngreso : DateTime
-  +iniciarSesion()
-  +cambiarPassword()
-  +activar2FA()
+  +{static} buscarPorCorreo(bd, correo) : Usuario
 }
 enum Rol {
   VECINO
@@ -57,9 +55,8 @@ class Reporte <<document>> {
   +nombreVecino : String
   +fechaCreacion : DateTime
   +fechaActualizacion : DateTime
-  +cambiarEstado()
-  +deshacer()
-  +verificar()
+  +confirmaciones() : int
+  +guardar(bd)
 }
 enum EstadoReporte {
   CREADO
@@ -93,7 +90,6 @@ class Notificacion <<document>> {
   +mensaje : String
   +leida : boolean
   +fecha : DateTime
-  +marcarLeida()
 }
 
 Usuario --> Rol
@@ -110,8 +106,57 @@ Barrio "1" *-- "*" Via : embebido
 Via "*" --> "1" Barrio : destino
 Usuario "1" -- "*" Suscripcion
 Suscripcion "*" --> "1" Barrio
-Notificacion "*" --> "1" Usuario
-Notificacion "*" --> "0..1" Reporte
+Notificacion "*" --> "1" Usuario : destinatario
+Notificacion "*" --> "0..1" Reporte : sobre
+
+note bottom of Barrio
+  counters (colección aparte): guarda el último
+  id usado por cada colección; next_id() lo sube
+  con $inc atómico para que los ids sean enteros.
+end note
+
+' ===== Servicios (módulos de funciones en el código)
+class ServicioReportes <<módulo report_service.py>> {
+  +crearReporte(bd, usuario, datos) : ReporteCreado
+  +cambiarEstado(bd, reporte, nuevoEstado, usuario, nota) : CambioEstado
+  +publicar(bd, reporte, moderador, nota) : int
+  +deshacer(bd, reporte) : (deshecho, actual)
+  +despacharNotificaciones(bd) : int
+  +obtenerReporteO404(bd, id) : Reporte
+}
+class ReporteCreado {
+  +reporte : Reporte
+  +posicionEnCola : int
+}
+class Seguridad <<módulo security.py>> {
+  -bloqueoLogin : LoginThrottle
+  -limiteAuth : RateLimiter
+  +hashPassword(clave) : String
+  +verificarPassword(clave, hash) : boolean
+  +validarFortaleza(clave)
+  +crearToken(usuario) : JWT
+  +usuarioActual(token) : Usuario
+  +requerirModerador(usuario) : Usuario
+  +nuevoSecretoTOTP() : String
+  +verificarTOTP(secreto, codigo) : boolean
+}
+class LoginThrottle <<bloqueo por intentos>> {
+  +segundosBloqueado(correo) : int
+  +fallo(correo)
+  +reiniciar(correo)
+}
+class RateLimiter <<límite de solicitudes>> {
+  +registrar(clave, limite, ventana) : int
+}
+
+ServicioReportes ..> Reporte : crea y modifica
+ServicioReportes ..> CambioEstado : agrega al historial
+ServicioReportes ..> Notificacion : guarda
+ServicioReportes ..> ReporteCreado : devuelve
+ServicioReportes ..> MotorAlertas : usa
+Seguridad ..> Usuario : autentica
+Seguridad *-- LoginThrottle
+Seguridad *-- RateLimiter
 
 ' ===== Motor de alertas en memoria (estructuras de datos propias)
 class MotorAlertas {
@@ -124,17 +169,29 @@ class MotorAlertas {
   -grafoCiudad : Grafo
   -catalogoBarrios : ArregloDinamico
   -elementos : TablaHash<int, ElementoReporte>
+  -candado : RLock
+  -despachadasTotal : int
   +cargar(bd)
   +agregarReporte(elemento, primerEstado) : int
+  +obtenerElemento(reporteId) : ElementoReporte
+  +ordenCola() : List<ElementoReporte>
   +tomarSiguiente() : ElementoReporte
+  +tomarEspecifico(reporteId) : ElementoReporte
+  +reencolar(reporteId)
   +apilarEstado(reporteId, cambio)
-  +desapilarEstado(reporteId)
+  +desapilarEstado(reporteId) : (deshecho, actual)
+  +pilaEstado(reporteId) : List<EntradaEstado>
   +publicar(reporteId, autorId, mensaje) : int
+  +despublicar(reporteId, mensaje)
   +idsDelFeed(barrioId, limite) : List<int>
   +idsEnRango(inicio, fin) : List<int>
+  +conteoPorZona() : Dict<int, int>
+  +severidadPorZona() : Dict<int, int>
   +ranking() : List
   +suscribir(barrioId, usuarioId)
-  +despacharNotificaciones(maximo) : List
+  +desuscribir(barrioId, usuarioId)
+  +cantidadSuscriptores(barrioId) : int
+  +vaciarNotificaciones(maximo) : List
   +buscarBarrio(nombre) : int
   +estadoInterno() : dict
 }
@@ -220,6 +277,8 @@ note right of MotorAlertas
   Nombre en el código (backend/app):
   MotorAlertas = AlertEngine
   ElementoReporte = ReportItem
+  ServicioReportes = report_service.py
+  Seguridad = security.py
   EntradaEstado = StatusEntry
   NotificacionPendiente = PendingNotification
   ColaPrioridad = PriorityQueue
