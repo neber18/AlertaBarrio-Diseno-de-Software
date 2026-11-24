@@ -1,5 +1,5 @@
 @startuml Vista_Logica_AlertaBarrio
-title Vista Lógica 1/2 - Modelo de dominio (MongoDB) - AlertaBarrio
+title Vista Lógica (Diagrama de Clases) - AlertaBarrio: dominio en MongoDB + motor de alertas
 skinparam classAttributeIconSize 0
 
 class Usuario <<document>> {
@@ -139,4 +139,126 @@ ResumenDiario "*" --> "1" Barrio
 ZonaRiesgo "*" --> "1" Barrio
 AnalisisIA "*" --> "0..1" Reporte
 AnalisisIA "*" --> "0..1" Barrio
+
+' ===== Motor de alertas en memoria (estructuras de datos propias)
+class AlertEngine {
+  -moderationQueue : PriorityQueue<ReportItem>
+  -statusStacks : HashTable<int, Stack<StatusEntry>>
+  -zoneFeeds : HashTable<int, LinkedList<ReportItem>>
+  -subscribers : HashTable<int, LinkedList<int>>
+  -notificationQueue : Queue<PendingNotification>
+  -timeline : BinarySearchTree<float, int>
+  -cityGraph : Graph
+  -neighborhoodCatalog : DynamicArray
+  -items : HashTable<int, ReportItem>
+  +load(db)
+  +addReport(item, firstStatus) : int
+  +takeNext() : ReportItem
+  +pushStatus(reportId, history)
+  +popStatus(reportId)
+  +publish(reportId, reporterId, message) : int
+  +feedIds(neighborhoodId, limit) : List<int>
+  +rangeIds(start, end) : List<int>
+  +ranking() : List
+  +subscribe(neighborhoodId, userId)
+  +drainNotifications(max) : List
+  +findNeighborhood(name) : int
+  +snapshot() : dict
+}
+class ReportItem {
+  +id : int
+  +title : String
+  +neighborhoodId : int
+  +userId : int
+  +severity : int
+  +priority : double
+  +status : String
+  +createdAt : DateTime
+}
+class StatusEntry {
+  +historyId : int
+  +previousStatus : String
+  +newStatus : String
+  +changedBy : int
+  +changedAt : DateTime
+  +note : String
+}
+class PendingNotification {
+  +userId : int
+  +reportId : int
+  +message : String
+  +queuedAt : DateTime
+}
+class PriorityQueue<T> <<max-heap>> {
+  +push(item)
+  +pop() : T
+  +peek() : T
+  +remove(id) : T
+  +ordered() : List
+}
+class Stack<T> {
+  +push(item)
+  +pop() : T
+  +peek() : T
+}
+class Queue<T> <<buffer circular>> {
+  +enqueue(item)
+  +dequeue() : T
+  +peek() : T
+}
+class LinkedList<T> <<doble>> {
+  +pushFront(item)
+  +pushBack(item)
+  +removeFirst(pred)
+  +insertSorted(item, key)
+}
+class HashTable<K,V> <<encadenamiento>> {
+  +put(key, value)
+  +get(key) : V
+  +remove(key) : V
+  +loadFactor() : double
+}
+class BinarySearchTree<K,V> <<AVL>> {
+  +insert(key, value)
+  +search(key) : List
+  +rangeQuery(low, high) : List
+  +height() : int
+}
+class Graph {
+  +addVertex(v)
+  +addEdge(u, v, peso)
+  +dijkstra(origen, destino)
+  +bfsPath(origen, destino)
+  +dfsReachable(origen)
+}
+class DynamicArray<T> {
+  +append(item)
+  +get(i) : T
+  +insert(i, item)
+  +removeAt(i) : T
+}
+class Sorting <<utility>> {
+  +mergeSort(lista, key)
+  +quickSort(lista, key)
+  +binarySearch(lista, valor)
+}
+
+AlertEngine *-- "1" PriorityQueue : cola de moderación
+AlertEngine *-- "*" Stack : historial por reporte
+AlertEngine *-- "*" LinkedList : feed por barrio / suscritos
+AlertEngine *-- "1..*" HashTable : índices
+AlertEngine *-- "1" Queue : notificaciones FIFO
+AlertEngine *-- "1" BinarySearchTree : línea de tiempo
+AlertEngine *-- "1" Graph : barrios y vías
+AlertEngine *-- "1" DynamicArray : catálogo de barrios
+AlertEngine ..> Sorting : usa
+PriorityQueue o-- "*" ReportItem
+LinkedList o-- "*" ReportItem
+Stack o-- "*" StatusEntry
+Queue o-- "*" PendingNotification
+
+' ===== Cómo se conectan las dos partes
+ReportItem ..> Reporte : se crea desde
+StatusEntry ..> CambioEstado : se crea desde
+PendingNotification ..> Notificacion : se guarda como
 @enduml
